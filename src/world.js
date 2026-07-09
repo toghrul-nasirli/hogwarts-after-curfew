@@ -1311,6 +1311,7 @@ export function buildWorld(scene) {
     doorsAnimating, ignitables, ignite, extinguish,
     setHouse, setHousePoints, lightLevelAt, dynamicLight, surfaceHeightAt,
     raycastRoot: [staticG, doorsG, liftG],
+    liftables: liftG.children,
     spawn: { x: 0, z: 38, yaw: 0 },
     glowTex, coldGlowTex,
     dementorSpawns: [[-26, -20], [-10, -20], [2, -20]],

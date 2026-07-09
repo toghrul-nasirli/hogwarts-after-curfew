@@ -1,4 +1,6 @@
 // DOM HUD: overlay, objective, captions, prompts, spell bar, chill vignette, faint fade.
+import { t } from './i18n.js';
+
 export class UI {
   constructor() {
     this.el = {
@@ -46,7 +48,7 @@ export class UI {
 
   setPaused(paused) {
     if (paused) {
-      this.el.overlay.querySelector('.enter').textContent = 'Paused — click to resume';
+      this.el.overlay.querySelector('.enter').textContent = t('paused');
       this.showOverlay();
     } else {
       this.hideOverlay();

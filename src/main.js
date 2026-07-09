@@ -7,6 +7,7 @@ import { Creatures } from './creatures.js';
 import { UI } from './ui.js';
 import { AudioFX } from './audio.js';
 import { MaraudersMap } from './map.js';
+import { t, setLang, storedLang, localizeDom } from './i18n.js';
 
 window.__errors = [];
 window.__THREE = THREE;
@@ -50,6 +51,21 @@ scene.fog = new THREE.FogExp2(0x070a18, 0.011);
 const camera = new THREE.PerspectiveCamera(66, window.innerWidth / window.innerHeight, 0.1, 500);
 
 const ui = new UI();
+
+// ── language (chosen once, before anything else) ─────────────────────────────
+const langpickEl = document.getElementById('langpick');
+if (storedLang()) setLang(storedLang());
+else langpickEl.classList.add('show');
+localizeDom();
+for (const btn of langpickEl.querySelectorAll('button')) {
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    setLang(btn.dataset.lang);
+    localizeDom();
+    langpickEl.classList.remove('show');
+    ui.objective(t(quests[questIdx].key));
+  });
+}
 const audio = new AudioFX();
 const world = buildWorld(scene);
 const player = new Player(camera, world, canvas);
@@ -87,10 +103,10 @@ function enterGame() {
   if (!started) {
     started = true;
     if (pendingHouseCry) {
-      ui.caption(`“${pendingHouseCry.toUpperCase()}!” cries the Hat — and the castle swallows the echo. It sleeps…`, 5200);
+      ui.caption(t('hatcry', { house: pendingHouseCry.toUpperCase() }), 5200);
       pendingHouseCry = null;
     } else {
-      ui.caption('The courtyard is deserted. The castle sleeps…', 4200);
+      ui.caption(t('sleeps'), 4200);
     }
   }
 }
@@ -100,7 +116,7 @@ function startWithoutLock() {
   player.debug = true; // mouse-look from raw mouse movement, cursor stays visible
   player.enabled = true;
   enterGame();
-  ui.caption('Mouse capture unavailable — the view follows your mouse instead.', 5000);
+  ui.caption(t('mouseFallback'), 5000);
 }
 
 function attemptEnter() {
@@ -154,100 +170,83 @@ document.addEventListener('pointerlockerror', () => {
 });
 window.addEventListener('blur', () => { player.keys = {}; });
 
+// ── gentle hints, once each (persisted in the save) ──────────────────────────
+const hintsShown = new Set();
+function hintOnce(key) {
+  if (hintsShown.has(key)) return;
+  hintsShown.add(key);
+  ui.caption(t(key), 5600);
+}
+let playT = 0;
+
 // ── house points ─────────────────────────────────────────────────────────────
 let points = 50;
 function addPoints(delta) {
   points = Math.max(0, points + delta);
   ui.setPoints(points, delta);
   world.setHousePoints(points);
+  if (delta > 0) hintOnce('hintPoints');
   persist();
 }
 
 // ── creature events ──────────────────────────────────────────────────────────
 creatures.onSpotted = () => {
   audio.yowl();
-  ui.caption('Mrs. Norris’s lamp-like eyes flash — a yowl echoes down the corridor. Filch is coming!', 4500);
+  ui.caption(t('norrisSpotted'), 5200);
 };
 creatures.onFilchCaught = () => {
   audio.faint();
   addPoints(-20);
   const house = HOUSES[houseIdx === null ? 0 : houseIdx].name;
-  ui.faint(`Caught! Filch: “Students out of bed! Twenty points from ${house}!”`, () => {
+  ui.faint(t('filchCaught', { house }), () => {
     player.teleport(0, 8, Math.PI, 0);
     creatures.filchReset();
   });
 };
 creatures.onFilchLost = () => {
-  ui.caption('You’ve given Filch the slip… for now.', 3500);
+  ui.caption(t('filchLost'), 3500);
 };
 spells.onIgnite = (ig) => {
   if (!ig._scored) { ig._scored = true; addPoints(1); }
 };
 creatures.onBanish = () => {
   audio.banish();
-  ui.caption('The Dementor shreds apart with a distant shriek!', 3600);
+  ui.caption(t('banish'), 3600);
 };
 creatures.onCaught = () => {
   audio.faint();
   audio.dementor(0);
-  ui.faint('You fainted… Madam Pomfrey levitated you to safety and fed you chocolate.', () => {
+  ui.faint(t('dementorFaint'), () => {
     player.teleport(0, 5, Math.PI, 0);
     creatures.afterCaught();
   });
 };
 spells.onUnlock = (door) => {
-  if (door.id === 'classroom') ui.caption('The Charms classroom — empty desks, waiting chalk.', 3600);
-  if (door.id === 'potions') ui.caption('Snape’s potion store! Best not touch anything… much.', 3600);
+  if (door.id === 'classroom') ui.caption(t('unlockClassroom'), 3600);
+  if (door.id === 'potions') ui.caption(t('unlockPotions'), 3600);
 };
 
 // ── quest line ───────────────────────────────────────────────────────────────
 const quests = [
-  {
-    text: 'Cross the courtyard to the <b>Castle Gate</b>. It’s locked — select <b>Alohomora</b> [3] and click while looking at it.',
-    done: () => !world.doorByName.gate.locked,
-    onDone: 'The great oak doors groan inward. You’re in.',
-  },
-  {
-    text: 'Slip inside and find the <b>Great Hall</b> — the tall double doors on the <b>left</b> of the Entrance Hall. Press <span style="color:#ffe9a8">[E]</span> to open doors.',
-    done: () => world.inZone(world.zones.greatHall, player.pos.x, player.pos.z),
-    onDone: 'A thousand candles float beneath a sky that isn’t there.',
-  },
-  {
-    text: 'When you’ve had your fill of the candles, head back and take the <b>dungeon stairs</b> — the low opening to the <b>right</b> of the Grand Staircase — and go down.',
-    done: () => player.pos.y < -2.5,
-    onDone: 'The air turns cold and damp. Something is down here.',
-  },
-  {
-    text: 'You can barely see your own hands. Cast <b>Lumos</b> [1] to light your wand. (<b>Nox</b> [2] snuffs it out.)',
-    done: () => spells.lumosOn && player.pos.y < -2.5,
-    onDone: 'Wandlight washes over dripping stone… and long, barred cells.',
-  },
-  {
-    text: 'That creeping, hollow cold — a <b>Dementor</b> is hunting you! Face it and cast <b>Expecto Patronum</b> [0]. Don’t let it touch you!',
-    done: () => creatures.banishedCount >= 1,
-    onDone: 'Your silver stag drives the darkness away. You did it!',
-  },
-  {
-    text: 'You’ve mastered the great charms! ⚡ For extra credit: unlock the <b>Charms Classroom</b> (east corridor) and the <b>Potions Store</b> (dungeon’s end), light candles and sconces with <b>Incendio</b> [4] — and douse them with <b>Aguamenti</b> [5].',
-    done: () => !world.doorByName.classroom.locked && !world.doorByName.potions.locked,
-    onDone: 'Every door in the castle stands open to you. Sleep well, wizard.',
-  },
-  {
-    text: '⚡ Every door stands open. Explore as long as you like — the candles never burn down.',
-    done: () => false,
-  },
+  { key: 'q0', done: () => !world.doorByName.gate.locked },
+  { key: 'q1', done: () => world.inZone(world.zones.greatHall, player.pos.x, player.pos.z) },
+  { key: 'q2', done: () => player.pos.y < -2.5 },
+  { key: 'q3', done: () => spells.lumosOn && player.pos.y < -2.5 },
+  { key: 'q4', done: () => creatures.banishedCount >= 1 },
+  { key: 'q5', done: () => !world.doorByName.classroom.locked && !world.doorByName.potions.locked },
+  { key: 'q6', done: () => false },
 ];
 let questIdx = 0;
-ui.objective(quests[0].text);
+ui.objective(t(quests[0].key));
 
 function updateQuests() {
   const q = quests[questIdx];
   if (q && q.done()) {
-    if (q.onDone) ui.caption(q.onDone, 4200);
+    ui.caption(t(q.key + '_done'), 4200);
     audio.chime();
     questIdx += 1;
     addPoints(10);
-    if (quests[questIdx]) ui.objective(quests[questIdx].text);
+    if (quests[questIdx]) ui.objective(t(quests[questIdx].key));
   }
 }
 
@@ -263,6 +262,7 @@ function persist() {
       doors: Object.fromEntries(world.doors.map((d) => [d.id, [d.locked ? 1 : 0, d.target]])),
       ign: world.ignitables.map((ig) => (ig.lit ? 1 : 0)),
       pos: [+player.pos.x.toFixed(1), +player.pos.z.toFixed(1), +player.yaw.toFixed(2)],
+      hs: [...hintsShown],
     }));
   } catch (e) { /* storage unavailable — play unsaved */ }
 }
@@ -291,10 +291,11 @@ function persist() {
   }
   if (typeof s.q === 'number') {
     questIdx = Math.min(Math.max(0, s.q), quests.length - 1);
-    ui.objective(quests[questIdx].text);
+    ui.objective(t(quests[questIdx].key));
   }
   if (typeof s.p === 'number') points = Math.max(0, s.p);
   if (Array.isArray(s.pos)) player.teleport(s.pos[0], s.pos[1], s.pos[2] || 0);
+  if (Array.isArray(s.hs)) for (const k of s.hs) hintsShown.add(k);
 })();
 ui.setPoints(points);
 world.setHousePoints(points);
@@ -306,6 +307,8 @@ let stepAlt = false;
 // ── debug / QA hooks ─────────────────────────────────────────────────────────
 window.__game = {
   start() {
+    if (!storedLang()) { setLang('en'); localizeDom(); }
+    langpickEl.classList.remove('show');
     if (houseIdx === null) applyHouse(0); // QA runs skip the ceremony
     player.debug = true;
     player.enabled = true;
@@ -364,7 +367,7 @@ document.addEventListener('keydown', (e) => {
   if (e.code !== 'KeyM' || !started) return;
   map.toggle();
   audio.rustle();
-  ui.caption(map.open ? '“I solemnly swear that I am up to no good.”' : '“Mischief managed.”', 2600);
+  ui.caption(map.open ? t('mapOpen') : t('mapClose'), 2600);
 });
 
 function mapActors() {
@@ -455,7 +458,27 @@ function frame() {
 
   // quests don't need per-frame precision
   acc += dt;
-  if (acc > 0.2) { acc = 0; updateQuests(); }
+  if (acc > 0.2) {
+    acc = 0;
+    updateQuests();
+    if (started) {
+      playT += 0.2;
+      if (playT > 45) hintOnce('hintMap');
+      if (Math.abs(player.pos.y) < 1.5 &&
+          Math.hypot(creatures.norris.x - player.pos.x, creatures.norris.z - player.pos.z) < 14) {
+        hintOnce('hintCat');
+      }
+      if (!hintsShown.has('hintLeviosa')) {
+        for (const m of world.liftables) {
+          if (Math.abs(m.position.y - player.pos.y) < 2.5 &&
+              Math.hypot(m.position.x - player.pos.x, m.position.z - player.pos.z) < 3.2) {
+            hintOnce('hintLeviosa');
+            break;
+          }
+        }
+      }
+    }
+  }
 
   renderer.render(scene, camera);
 

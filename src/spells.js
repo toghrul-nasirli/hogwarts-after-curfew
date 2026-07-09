@@ -1,5 +1,6 @@
 // The wand, the four spells, sparkle effects, and door interaction.
 import * as THREE from 'three';
+import { t } from './i18n.js';
 
 class SparklePool {
   constructor(scene, tex, color, n = 240) {
@@ -165,26 +166,26 @@ export class SpellSystem {
       case 0: { // Lumos
         this._flick();
         if (this.lumosOn) {
-          this.ui.caption('Your wand is already alight.');
+          this.ui.caption(t('lumosAlready'));
           break;
         }
         this.lumosOn = true;
         this.ui.setLumos(true);
         this.audio.lumos();
         this.coldSparks.burst(this.wandTip.getWorldPosition(new THREE.Vector3()), 24, 1.4, 0.5);
-        this.ui.caption('Lumos! A cold, steady light blooms at your wand-tip.');
+        this.ui.caption(t('lumosOn'));
         break;
       }
       case 1: { // Nox
         this._flick();
         if (!this.lumosOn) {
-          this.ui.caption('Your wand is already dark.');
+          this.ui.caption(t('noxAlready'));
           break;
         }
         this.lumosOn = false;
         this.ui.setLumos(false);
         this.audio.nox();
-        this.ui.caption('Nox. The light dies.');
+        this.ui.caption(t('noxOff'));
         break;
       }
       case 2: { // Alohomora
@@ -195,16 +196,16 @@ export class SpellSystem {
           door.unlock();
           this.audio.unlock();
           this.goldSparks.burst(hit.point, 64, 2.6, 0.9);
-          this.ui.caption(`Alohomora! The ${door.name} clicks open.`);
+          this.ui.caption(t('alohomoraUnlock', { door: t('door_' + door.id) }));
           if (this.onUnlock) this.onUnlock(door);
         } else if (door) {
-          this.ui.caption(`The ${door.name} is already unlocked — press E to open it.`);
+          this.ui.caption(t('alohomoraAlready', { door: t('door_' + door.id) }));
         } else {
           const p = this.camera.getWorldPosition(new THREE.Vector3())
             .add(this.camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(3.5));
           this.goldSparks.burst(p, 10, 1.2, 0.4);
           this.audio.sparkle();
-          this.ui.caption('The charm fizzles — nothing to unlock there.');
+          this.ui.caption(t('alohomoraFizzle'));
         }
         break;
       }
@@ -212,7 +213,7 @@ export class SpellSystem {
         this._flick();
         if (this.held) {
           this._dropHeld();
-          this.ui.caption('You let it drift gently down.');
+          this.ui.caption(t('leviosaDown'));
           break;
         }
         const hit = this._aimHit();
@@ -223,17 +224,17 @@ export class SpellSystem {
           this.audio.sparkle();
           this.goldSparks.burst(o.position.clone(), 20, 1.2, 0.5);
           this.ui.caption(this._leviosaJoked
-            ? `Wingardium Leviosa! The ${o.userData.name} floats.`
-            : 'Wingardium Levi-O-sa! ("It’s Levi-O-sa, not Levio-SA.")');
+            ? t('leviosaFloat', { name: t('item_' + o.userData.name) })
+            : t('leviosaJoke'));
           this._leviosaJoked = true;
         } else {
-          this.ui.caption('Nothing light enough to levitate there. (Try a crate, book, goblet, or the potion bottles.)');
+          this.ui.caption(t('leviosaNothing'));
         }
         break;
       }
       case 6: { // Expecto Patronum (key 0)
         if (this.patronusCooldown > 0) {
-          this.ui.caption('You need a moment to gather a happy memory…');
+          this.ui.caption(t('patronusWait'));
           break;
         }
         this._flick();
@@ -244,7 +245,7 @@ export class SpellSystem {
         const dir = this.camera.getWorldDirection(new THREE.Vector3());
         this.creatures.castPatronus(origin, dir);
         this.coldSparks.burst(this.wandTip.getWorldPosition(new THREE.Vector3()), 60, 3, 0.8);
-        this.ui.caption('EXPECTO PATRONUM! A silver stag erupts from your wand!');
+        this.ui.caption(t('patronusCast'));
         break;
       }
       case 3: { // Incendio — lights the sconce/candelabra you aim at
@@ -255,20 +256,20 @@ export class SpellSystem {
           this.world.ignite(best);
           this.audio.incendio();
           this.goldSparks.burst(new THREE.Vector3(best.x, best.y, best.z), 42, 1.9, 0.8);
-          this.ui.caption('Incendio! Flames leap to life.');
+          this.ui.caption(t('incendioLight'));
           if (this.onIgnite) this.onIgnite(best);
         } else if (best && best.lit) {
-          this.ui.caption('That flame is already burning merrily.');
+          this.ui.caption(t('incendioBurning'));
         } else if (hit) {
           this.goldSparks.burst(hit.point, 14, 1.4, 0.5);
           this.audio.sparkle();
-          this.ui.caption('The spell scorches bare stone. Aim at unlit candles or torch sconces.');
+          this.ui.caption(t('incendioStone'));
         } else {
           const p = this.camera.getWorldPosition(new THREE.Vector3())
             .add(this.camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(4));
           this.goldSparks.burst(p, 12, 1.2, 0.4);
           this.audio.sparkle();
-          this.ui.caption('A lick of flame curls into the dark and dies.');
+          this.ui.caption(t('incendioDark'));
         }
         break;
       }
@@ -280,16 +281,16 @@ export class SpellSystem {
           this.world.extinguish(best);
           this.audio.aguamenti();
           this.coldSparks.burst(new THREE.Vector3(best.x, best.y, best.z), 46, 2.2, 0.7);
-          this.ui.caption('Aguamenti! The flames hiss out in a puff of steam.');
+          this.ui.caption(t('aguamentiDouse'));
         } else if (best && !best.lit) {
-          this.ui.caption('Nothing is burning there.');
+          this.ui.caption(t('aguamentiNothing'));
         } else {
           const p = hit ? hit.point
             : this.camera.getWorldPosition(new THREE.Vector3())
               .add(this.camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(4));
           this.coldSparks.burst(p, 20, 1.8, 0.5);
           this.audio.aguamenti();
-          this.ui.caption('A jet of water splashes over the stone.');
+          this.ui.caption(t('aguamentiSplash'));
         }
         break;
       }
@@ -328,7 +329,7 @@ export class SpellSystem {
     const result = door.interact();
     if (result === 'locked') {
       this.audio.locked();
-      this.ui.caption(`The ${door.name} won't budge. Perhaps a charm would help… [3]`);
+      this.ui.caption(t('doorBudge', { door: t('door_' + door.id) }));
     } else {
       this.audio.creak();
     }
@@ -392,9 +393,9 @@ export class SpellSystem {
     const door = this._nearestDoor();
     if (door) {
       if (door.locked) {
-        this.ui.prompt(`${door.name} — <i>locked</i>. Try <b>Alohomora</b> [3]`);
+        this.ui.prompt(t('promptLocked', { door: t('door_' + door.id) }));
       } else {
-        this.ui.prompt(`<span class="key">E</span> ${door.target > 0.5 ? 'Close' : 'Open'} ${door.name}`);
+        this.ui.prompt(t(door.target > 0.5 ? 'promptClose' : 'promptOpen', { door: t('door_' + door.id) }));
       }
     } else {
       this.ui.prompt(null);

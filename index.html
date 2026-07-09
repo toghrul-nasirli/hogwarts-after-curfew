@@ -99,6 +99,26 @@
     transform: rotate(-0.6deg);
   }
 
+  #langpick {
+    position: absolute; inset: 0; display: none; pointer-events: auto; z-index: 6;
+    align-items: center; justify-content: center; text-align: center;
+    background: radial-gradient(ellipse at center, rgba(9, 12, 26, 0.96) 0%, rgba(2, 3, 8, 0.99) 100%);
+  }
+  #langpick.show { display: flex; }
+  #langpick .crest { font-size: 40px; margin-bottom: 14px; }
+  #langpick .lq { color: #9a8d6a; font-style: italic; font-size: 15px; margin-bottom: 26px; }
+  #langpick .langs { display: flex; gap: 14px; justify-content: center; }
+  #langpick button {
+    font-family: Georgia, serif; cursor: pointer; padding: 13px 34px;
+    background: rgba(10, 12, 24, 0.8); border: 1px solid rgba(201, 165, 69, 0.55);
+    border-radius: 5px; color: #ffe9a8; font-size: 16px; letter-spacing: 0.05em;
+    transition: transform 0.12s, box-shadow 0.12s;
+  }
+  #langpick button:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 22px rgba(201, 165, 69, 0.3);
+  }
+
   #chill {
     position: absolute; inset: 0; opacity: 0; transition: opacity 0.3s;
     background:
@@ -183,7 +203,7 @@
 <canvas id="scene"></canvas>
 <div id="hud">
   <div id="crosshair"></div>
-  <div id="objective"><div class="head">Objective</div><div id="objtext"></div></div>
+  <div id="objective"><div class="head" id="objhead">Objective</div><div id="objtext"></div></div>
   <div id="points"><div class="head">Gryffindor</div><div class="val" id="pointsval">50</div></div>
   <div id="prompt"></div>
   <div id="caption"></div>
@@ -202,29 +222,33 @@
   <div id="overlay">
     <div class="crest">⚡</div>
     <h1>HOGWARTS</h1>
-    <h2>— After Curfew —</h2>
-    <div class="controls">
-      <span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> walk
-      &nbsp;·&nbsp; <span class="key">Shift</span> run &nbsp;·&nbsp; <span class="key">Space</span> jump
-      &nbsp;·&nbsp; mouse to look<br/>
-      <span class="key">1</span>–<span class="key">6</span> and <span class="key">0</span> choose a spell &nbsp;·&nbsp;
-      <span class="key">Click</span> cast &nbsp;·&nbsp; <span class="key">E</span> open doors &nbsp;·&nbsp; <span class="key">M</span> the Map
-    </div>
-    <div class="enter">Click to sneak in</div>
-    <div class="fine">A fan-made tribute for private fun. Best played in Chrome with sound on.</div>
+    <h2 id="subtitle">— After Curfew —</h2>
+    <div class="controls" id="controls"></div>
+    <div class="enter" id="enterhint">Click to sneak in</div>
+    <div class="fine" id="fineprint"></div>
   </div>
   <div id="sorting">
     <div>
       <div class="hat">🎩</div>
-      <h1>THE SORTING HAT</h1>
-      <p class="quote">“Hmm… difficult. VERY difficult. Plenty of courage, I see. Where shall I put you?”</p>
+      <h1 id="sortTitle">THE SORTING HAT</h1>
+      <p class="quote" id="sortQuote"></p>
       <div class="houses">
         <button class="house" data-house="0" style="--hc:#d3352b">Gryffindor<span>the brave</span></button>
         <button class="house" data-house="1" style="--hc:#2fae66">Slytherin<span>the cunning</span></button>
         <button class="house" data-house="2" style="--hc:#3a6bd8">Ravenclaw<span>the wise</span></button>
         <button class="house" data-house="3" style="--hc:#e8c832">Hufflepuff<span>the loyal</span></button>
       </div>
-      <button class="house hatpick" data-house="hat">Let the Hat decide…</button>
+      <button class="house hatpick" data-house="hat" id="hatpick">Let the Hat decide…</button>
+    </div>
+  </div>
+  <div id="langpick">
+    <div>
+      <div class="crest">⚡</div>
+      <p class="lq">Choose your language &nbsp;·&nbsp; Dilinizi seçin</p>
+      <div class="langs">
+        <button data-lang="en">English</button>
+        <button data-lang="az">Azərbaycanca</button>
+      </div>
     </div>
   </div>
 </div>

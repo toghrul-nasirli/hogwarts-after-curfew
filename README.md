@@ -22,8 +22,8 @@ cd hogwarts
 npm start          # serves on http://localhost:8123
 ```
 
-Then open **http://localhost:8123** in Chrome (best) or any modern browser, click to enter,
-and turn your sound on. (`npm start` just runs `python3 -m http.server 8123` — any static
+Then open **http://localhost:8123** in Chrome (best) or any modern browser, pick your
+language (English / Azərbaycanca), click to enter, and turn your sound on. (`npm start` just runs `python3 -m http.server 8123` — any static
 file server works. Note: `index.html` itself won't work over `file://` — browsers refuse to
 load JS modules from plain files; use the standalone build for that.)
 
