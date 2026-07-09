@@ -303,6 +303,273 @@ class Patronus {
   }
 }
 
+// circle-vs-AABB slide for ground-walking actors (same scheme as the player)
+function collideMove(world, pos, dx, dz, r, footY) {
+  pos.x += dx;
+  pos.z += dz;
+  const boxes = world.activeColliders();
+  for (let i = 0; i < boxes.length; i++) {
+    const b = boxes[i];
+    if (b.maxY <= footY + 0.15 || b.minY >= footY + 1.2) continue;
+    const cx = Math.max(b.minX, Math.min(pos.x, b.maxX));
+    const cz = Math.max(b.minZ, Math.min(pos.z, b.maxZ));
+    let ox = pos.x - cx, oz = pos.z - cz;
+    const d2 = ox * ox + oz * oz;
+    if (d2 >= r * r || d2 < 1e-9) continue;
+    const d = Math.sqrt(d2);
+    const push = (r - d) / d;
+    pos.x += ox * push;
+    pos.z += oz * push;
+  }
+}
+
+// Nearly Headless Nick — harmless ambience drifting through the Great Hall
+class Ghost {
+  constructor(scene) {
+    this.mat = new THREE.MeshBasicMaterial({
+      color: 0x9fb8d8, transparent: true, opacity: 0.22,
+      blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+    });
+    const g = this.group = new THREE.Group();
+    const profile = [
+      [0.42, 0], [0.36, 0.5], [0.28, 1.0], [0.3, 1.3], [0.2, 1.5], [0.06, 1.58],
+    ].map(([r, y]) => new THREE.Vector2(r, y));
+    g.add(new THREE.Mesh(new THREE.LatheGeometry(profile, 14), this.mat));
+    const ruff = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.05, 6, 14), this.mat);
+    ruff.position.y = 1.52;
+    ruff.rotation.x = Math.PI / 2;
+    g.add(ruff);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 8), this.mat);
+    head.position.set(0.1, 1.62, 0);
+    head.rotation.z = -0.55; // nearly headless, after all
+    g.add(head);
+    scene.add(g);
+    this.wps = [[-40, -8], [-16, -8], [-15, 3], [-28, 6], [-40, 3]];
+    this.idx = 0;
+    this.phase = Math.random() * 9;
+  }
+
+  update(dt, t) {
+    const wp = this.wps[this.idx];
+    const dx = wp[0] - this.group.position.x, dz = wp[1] - this.group.position.z;
+    const d = Math.hypot(dx, dz);
+    if (d < 0.6) this.idx = (this.idx + 1) % this.wps.length;
+    else {
+      this.group.position.x += (dx / d) * 0.8 * dt;
+      this.group.position.z += (dz / d) * 0.8 * dt;
+      const targetYaw = Math.atan2(dx, dz);
+      let dy = targetYaw - this.group.rotation.y;
+      while (dy > Math.PI) dy -= Math.PI * 2;
+      while (dy < -Math.PI) dy += Math.PI * 2;
+      this.group.rotation.y += dy * Math.min(1, 2 * dt);
+    }
+    this.group.position.y = 1.0 + Math.sin(t * 0.7 + this.phase) * 0.18;
+    this.mat.opacity = 0.18 + 0.09 * (Math.sin(t * 0.23 + this.phase) * 0.5 + 0.5);
+  }
+}
+
+// Mrs. Norris — patrols the ground floor; spots you by light
+class MrsNorris {
+  constructor(scene, world) {
+    this.world = world;
+    const fur = new THREE.MeshLambertMaterial({ color: 0x4a4038 });
+    const g = this.group = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), fur);
+    body.scale.set(1.7, 1, 1);
+    body.position.y = 0.22;
+    g.add(body);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 8), fur);
+    head.position.set(0.3, 0.34, 0);
+    g.add(head);
+    for (const s of [-1, 1]) {
+      const ear = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.09, 6), fur);
+      ear.position.set(0.3, 0.46, s * 0.055);
+      g.add(ear);
+      // the famous lamp-like eyes
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.018, 6, 6),
+        new THREE.MeshBasicMaterial({ color: 0xffe27a }));
+      eye.position.set(0.4, 0.36, s * 0.04);
+      g.add(eye);
+    }
+    const tail = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.34, 6), fur);
+    tail.position.set(-0.32, 0.36, 0);
+    tail.rotation.z = -0.7;
+    g.add(tail);
+    scene.add(g);
+
+    this.wps = [
+      [44, 4], [32, 4], [20, 4], [11, 4], [6, 8], [0, 11], [-6, 6],
+      [-8, -2], [0, -4], [6, 0], [11, 4], [24, 4],
+    ];
+    this.idx = 2;
+    this.group.position.set(30, 0, 4);
+    this.state = 'patrol'; // patrol | alert
+    this.cooldown = 0;
+    this.losTimer = 0;
+    this.stuck = 0;
+    this.lastX = 30; this.lastZ = 4;
+    this.ray = new THREE.Raycaster();
+  }
+
+  get x() { return this.group.position.x; }
+  get z() { return this.group.position.z; }
+
+  // light-dependent sight: bright player = seen from afar, dark = must be close
+  _sightRadius(player, lumosOn) {
+    if (lumosOn) return 14;
+    const lvl = this.world.lightLevelAt(player.pos.x, player.pos.y + 1, player.pos.z);
+    return lvl > 0.12 ? 9 : 2.5;
+  }
+
+  _hasLineOfSight(player) {
+    const from = new THREE.Vector3(this.x, 0.4, this.z);
+    const to = player.position;
+    const dir = to.clone().sub(from);
+    const dist = dir.length();
+    this.ray.set(from, dir.normalize());
+    this.ray.far = dist;
+    const hits = this.ray.intersectObjects(this.world.raycastRoot, true);
+    return !(hits.length && hits[0].distance < dist - 0.6);
+  }
+
+  update(dt, t, player, lumosOn, onSpotted) {
+    if (this.cooldown > 0) this.cooldown -= dt;
+
+    if (this.state === 'alert') {
+      // sit and stare at the player while Filch closes in
+      const dy = Math.atan2(player.pos.x - this.x, player.pos.z - this.z) - this.group.rotation.y;
+      this.group.rotation.y += Math.atan2(Math.sin(dy), Math.cos(dy)) * Math.min(1, 5 * dt);
+      return;
+    }
+
+    // patrol
+    const wp = this.wps[this.idx];
+    const dx = wp[0] - this.x, dz = wp[1] - this.z;
+    const d = Math.hypot(dx, dz);
+    if (d < 0.7) this.idx = (this.idx + 1) % this.wps.length;
+    else {
+      collideMove(this.world, this.group.position, (dx / d) * 1.7 * dt, (dz / d) * 1.7 * dt, 0.25, 0);
+      const targetYaw = Math.atan2(dx, dz) - Math.PI / 2; // model faces +x
+      let dy = targetYaw - this.group.rotation.y;
+      while (dy > Math.PI) dy -= Math.PI * 2;
+      while (dy < -Math.PI) dy += Math.PI * 2;
+      this.group.rotation.y += dy * Math.min(1, 4 * dt);
+    }
+    // un-stick: skip waypoint if barely moving
+    this.stuck += dt;
+    if (this.stuck > 1.4) {
+      if (Math.hypot(this.x - this.lastX, this.z - this.lastZ) < 0.35) {
+        this.idx = (this.idx + 1) % this.wps.length;
+      }
+      this.stuck = 0;
+      this.lastX = this.x; this.lastZ = this.z;
+    }
+
+    // detection (ground floor only, throttled)
+    if (this.cooldown > 0 || Math.abs(player.pos.y) > 1.5) return;
+    this.losTimer -= dt;
+    if (this.losTimer > 0) return;
+    this.losTimer = 0.3;
+    const pdx = player.pos.x - this.x, pdz = player.pos.z - this.z;
+    const pdist = Math.hypot(pdx, pdz);
+    if (pdist > this._sightRadius(player, lumosOn)) return;
+    // must be roughly in front of her nose (local +x rotated by yaw)
+    const fwdX = Math.cos(this.group.rotation.y);
+    const fwdZ = -Math.sin(this.group.rotation.y);
+    const dot = (pdx * fwdX + pdz * fwdZ) / (pdist || 1);
+    if (dot < 0.1 && pdist > 2) return;
+    if (!this._hasLineOfSight(player)) return;
+    this.state = 'alert';
+    onSpotted();
+  }
+
+  calmDown() {
+    this.state = 'patrol';
+    this.cooldown = 20;
+  }
+}
+
+// Argus Filch — summoned by Mrs. Norris, shuffles after you with his lantern
+class Filch {
+  constructor(scene, world) {
+    this.world = world;
+    const cloth = new THREE.MeshLambertMaterial({ color: 0x3a322c });
+    const g = this.group = new THREE.Group();
+    const profile = [[0.3, 0], [0.34, 0.35], [0.24, 1.05], [0.26, 1.35], [0.12, 1.5]]
+      .map(([r, y]) => new THREE.Vector2(r, y));
+    g.add(new THREE.Mesh(new THREE.LatheGeometry(profile, 12), cloth));
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 8),
+      new THREE.MeshLambertMaterial({ color: 0xb99b7e }));
+    head.position.y = 1.62;
+    g.add(head);
+    const hair = new THREE.Mesh(new THREE.SphereGeometry(0.135, 10, 8),
+      new THREE.MeshLambertMaterial({ color: 0x777770 }));
+    hair.position.set(-0.03, 1.66, 0);
+    hair.scale.set(1, 0.7, 1);
+    g.add(hair);
+    // the lantern
+    const cage = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.13, 0.09),
+      new THREE.MeshLambertMaterial({ color: 0x222222, transparent: true, opacity: 0.6 }));
+    cage.position.set(0.32, 1.0, 0.12);
+    g.add(cage);
+    const core = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6),
+      new THREE.MeshBasicMaterial({ color: 0xffd27a }));
+    core.position.copy(cage.position);
+    g.add(core);
+    g.visible = false;
+    scene.add(g);
+    this.lantern = world.dynamicLight(0xffb168, 6, 12);
+    this.active = false;
+    this.timer = 0;
+  }
+
+  spawn(playerPos) {
+    this.active = true;
+    this.timer = 0;
+    // emerges from whichever entrance is nearer the trespasser
+    const spots = [[44, 4], [0, 11.5]];
+    let best = spots[0], bd = Infinity;
+    for (const s of spots) {
+      const d = Math.hypot(s[0] - playerPos.x, s[1] - playerPos.z);
+      if (d < bd) { bd = d; best = s; }
+    }
+    this.group.position.set(best[0], 0, best[1]);
+    this.group.visible = true;
+    this.lantern.on = true;
+  }
+
+  despawn() {
+    this.active = false;
+    this.group.visible = false;
+    this.lantern.on = false;
+    this.lantern.y = -999;
+  }
+
+  update(dt, t, player, catchEnabled, onCaught, onGaveUp) {
+    if (!this.active) return;
+    this.timer += dt;
+    const dx = player.pos.x - this.group.position.x;
+    const dz = player.pos.z - this.group.position.z;
+    const d = Math.hypot(dx, dz);
+    collideMove(this.world, this.group.position, (dx / d || 0) * 2.2 * dt, (dz / d || 0) * 2.2 * dt, 0.32, 0);
+    this.group.rotation.y = Math.atan2(dx, dz);
+    this.group.rotation.z = Math.sin(t * 6) * 0.045; // shuffling rock
+    this.lantern.x = this.group.position.x + Math.sin(this.group.rotation.y) * 0.35;
+    this.lantern.y = 1.1;
+    this.lantern.z = this.group.position.z + Math.cos(this.group.rotation.y) * 0.35;
+    if (d < 1.4 && Math.abs(player.pos.y) < 1.5 && catchEnabled) {
+      this.despawn();
+      onCaught();
+      return;
+    }
+    // escaped: outlasted him, or left the ground floor entirely
+    if (this.timer > 20 || Math.abs(player.pos.y) > 1.5) {
+      this.despawn();
+      onGaveUp();
+    }
+  }
+}
+
 export class Creatures {
   constructor(scene, world) {
     this.world = world;
@@ -310,13 +577,24 @@ export class Creatures {
       (s) => new Dementor(scene, s, world.dungeonFloorY, world.dementorWaypoints)
     );
     this.patronus = new Patronus(scene, world);
+    this.ghost = new Ghost(scene);
+    this.norris = new MrsNorris(scene, world);
+    this.filch = new Filch(scene, world);
     this.banishedCount = 0;
     this.chill = 0;
     this.everAggro = false;
     this.onBanish = null; // (dementor) => {}
-    this.onCaught = null; // () => {}
+    this.onCaught = null; // () => {} — dementor got you
+    this.onSpotted = null; // () => {} — Mrs. Norris saw you
+    this.onFilchCaught = null; // () => {} — Filch reached you
+    this.onFilchLost = null; // () => {}
     this._catchLock = false;
     this.catchEnabled = true; // QA can disable via __game.noCatch(true)
+  }
+
+  // called by main after the caught-by-Filch fade completes
+  filchReset() {
+    this.norris.calmDown();
   }
 
   castPatronus(origin, dir) {
@@ -332,7 +610,16 @@ export class Creatures {
     setTimeout(() => { this._catchLock = false; }, 2500);
   }
 
-  update(dt, t, player) {
+  update(dt, t, player, lumosOn = false) {
+    this.ghost.update(dt, t);
+    this.norris.update(dt, t, player, lumosOn, () => {
+      this.filch.spawn(player.pos);
+      if (this.onSpotted) this.onSpotted();
+    });
+    this.filch.update(dt, t, player, this.catchEnabled,
+      () => { if (this.onFilchCaught) this.onFilchCaught(); },
+      () => { this.norris.calmDown(); if (this.onFilchLost) this.onFilchLost(); });
+
     const playerInDungeon = player.pos.y < -2.5;
     let minDist = Infinity;
     let anyChase = false;

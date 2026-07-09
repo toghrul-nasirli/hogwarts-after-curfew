@@ -58,20 +58,34 @@
     display: flex; gap: 10px;
   }
   .slot {
-    width: 118px; padding: 8px 0 7px; text-align: center;
+    width: 106px; padding: 8px 0 7px; text-align: center;
     background: rgba(8, 10, 22, 0.66); border: 1px solid rgba(201, 165, 69, 0.3);
     border-radius: 4px; transition: border-color 0.15s, background 0.15s, transform 0.15s;
   }
   .slot .key {
     font-size: 10px; letter-spacing: 0.2em; color: #8d7f5c; display: block; margin-bottom: 3px;
   }
-  .slot .name { font-size: 13px; color: #cfc19b; letter-spacing: 0.04em; }
+  .slot .name { font-size: 11.5px; color: #cfc19b; letter-spacing: 0.03em; }
   .slot.sel {
     border-color: #e5c56b; background: rgba(38, 30, 12, 0.8); transform: translateY(-3px);
     box-shadow: 0 0 14px rgba(201, 165, 69, 0.25);
   }
   .slot.sel .name { color: #ffe9a8; }
   .slot.lit .name::after { content: ' ✦'; color: #bfe0ff; }
+
+  #points {
+    position: absolute; top: 24px; right: 24px; text-align: right;
+    padding: 10px 16px; background: rgba(8, 10, 22, 0.62);
+    border: 1px solid rgba(201, 165, 69, 0.45); border-radius: 4px;
+    text-shadow: 0 1px 2px #000;
+  }
+  #points .head {
+    font-size: 11px; letter-spacing: 0.28em; color: #d3352b;
+    text-transform: uppercase; margin-bottom: 3px;
+  }
+  #points .val { font-size: 22px; color: #ffe9a8; transition: color 0.3s; }
+  #points.gain .val { color: #7fe08a; }
+  #points.loss .val { color: #ff7a6b; }
 
   #chill {
     position: absolute; inset: 0; opacity: 0; transition: opacity 0.3s;
@@ -123,6 +137,7 @@
 <div id="hud">
   <div id="crosshair"></div>
   <div id="objective"><div class="head">Objective</div><div id="objtext"></div></div>
+  <div id="points"><div class="head">Gryffindor</div><div class="val" id="pointsval">50</div></div>
   <div id="prompt"></div>
   <div id="caption"></div>
   <div id="spellbar">
@@ -131,7 +146,8 @@
     <div class="slot" data-i="2"><span class="key">3</span><span class="name">Alohomora</span></div>
     <div class="slot" data-i="3"><span class="key">4</span><span class="name">Incendio</span></div>
     <div class="slot" data-i="4"><span class="key">5</span><span class="name">Aguamenti</span></div>
-    <div class="slot" data-i="5"><span class="key">0</span><span class="name">Expecto Patronum</span></div>
+    <div class="slot" data-i="5"><span class="key">6</span><span class="name">Wing. Leviosa</span></div>
+    <div class="slot" data-i="6"><span class="key">0</span><span class="name">Exp. Patronum</span></div>
   </div>
   <div id="chill"></div>
   <div id="faint"><span id="fainttext"></span></div>
@@ -143,7 +159,7 @@
       <span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> walk
       &nbsp;·&nbsp; <span class="key">Shift</span> run &nbsp;·&nbsp; <span class="key">Space</span> jump
       &nbsp;·&nbsp; mouse to look<br/>
-      <span class="key">1</span>–<span class="key">5</span> and <span class="key">0</span> choose a spell &nbsp;·&nbsp;
+      <span class="key">1</span>–<span class="key">6</span> and <span class="key">0</span> choose a spell &nbsp;·&nbsp;
       <span class="key">Click</span> cast &nbsp;·&nbsp; <span class="key">E</span> open doors
     </div>
     <div class="enter">Click to sneak in</div>

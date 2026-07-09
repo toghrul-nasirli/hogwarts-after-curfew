@@ -48,7 +48,7 @@ class SparklePool {
   }
 }
 
-export const SPELL_NAMES = ['Lumos', 'Nox', 'Alohomora', 'Incendio', 'Aguamenti', 'Expecto Patronum'];
+export const SPELL_NAMES = ['Lumos', 'Nox', 'Alohomora', 'Incendio', 'Aguamenti', 'Wingardium Leviosa', 'Expecto Patronum'];
 
 export class SpellSystem {
   constructor(scene, camera, player, world, creatures, ui, audio) {
@@ -63,6 +63,10 @@ export class SpellSystem {
     this.patronusCooldown = 0;
     this.castAnim = 0;
     this.onUnlock = null; // (door) => {}
+    this.onIgnite = null; // (ignitable) => {}
+    this.held = null;     // Wingardium Leviosa target
+    this.dropping = [];   // released props falling to rest
+    this._leviosaJoked = false;
 
     // wand view-model
     this.wandRoot = new THREE.Group();
@@ -107,7 +111,8 @@ export class SpellSystem {
       if (e.code.startsWith('Digit')) {
         const n = parseInt(e.code.slice(5), 10);
         if (n >= 1 && n <= 5) this.select(n - 1);
-        else if (n === 0) this.select(5); // Expecto Patronum lives on 0
+        else if (n === 6) this.select(5); // Wingardium Leviosa
+        else if (n === 0) this.select(6); // Expecto Patronum lives on 0
       }
       if (e.code === 'KeyE') this.tryInteract();
     });
@@ -203,7 +208,30 @@ export class SpellSystem {
         }
         break;
       }
-      case 5: { // Expecto Patronum (key 0)
+      case 5: { // Wingardium Leviosa (key 6)
+        this._flick();
+        if (this.held) {
+          this._dropHeld();
+          this.ui.caption('You let it drift gently down.');
+          break;
+        }
+        const hit = this._aimHit();
+        let o = hit ? hit.object : null;
+        while (o && !o.userData.liftable) o = o.parent;
+        if (o && hit.distance < 7) {
+          this.held = o;
+          this.audio.sparkle();
+          this.goldSparks.burst(o.position.clone(), 20, 1.2, 0.5);
+          this.ui.caption(this._leviosaJoked
+            ? `Wingardium Leviosa! The ${o.userData.name} floats.`
+            : 'Wingardium Levi-O-sa! ("It’s Levi-O-sa, not Levio-SA.")');
+          this._leviosaJoked = true;
+        } else {
+          this.ui.caption('Nothing light enough to levitate there. (Try a crate, book, goblet or flask.)');
+        }
+        break;
+      }
+      case 6: { // Expecto Patronum (key 0)
         if (this.patronusCooldown > 0) {
           this.ui.caption('You need a moment to gather a happy memory…');
           break;
@@ -228,6 +256,7 @@ export class SpellSystem {
           this.audio.incendio();
           this.goldSparks.burst(new THREE.Vector3(best.x, best.y, best.z), 42, 1.9, 0.8);
           this.ui.caption('Incendio! Flames leap to life.');
+          if (this.onIgnite) this.onIgnite(best);
         } else if (best && best.lit) {
           this.ui.caption('That flame is already burning merrily.');
         } else if (hit) {
@@ -305,8 +334,35 @@ export class SpellSystem {
     }
   }
 
+  _dropHeld() {
+    if (!this.held) return;
+    this.dropping.push({ mesh: this.held, vy: 0 });
+    this.held = null;
+  }
+
   update(dt, t) {
     if (this.patronusCooldown > 0) this.patronusCooldown -= dt;
+
+    // Wingardium Leviosa: carried object floats ahead of the wand
+    if (this.held) {
+      const target = this.camera.getWorldPosition(new THREE.Vector3())
+        .add(this.camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(2.3));
+      target.y += Math.sin(t * 2.2) * 0.06;
+      this.held.position.lerp(target, 1 - Math.exp(-8 * dt));
+      this.held.rotation.y += dt * 0.9;
+    }
+    for (let i = this.dropping.length - 1; i >= 0; i--) {
+      const d = this.dropping[i];
+      d.vy -= 14 * dt;
+      d.mesh.position.y += d.vy * dt;
+      const rest = this.world.groundHeight(d.mesh.position.x, d.mesh.position.z, d.mesh.position.y + 1)
+        + (d.mesh.userData.restH || 0.15);
+      if (d.mesh.position.y <= rest) {
+        d.mesh.position.y = rest;
+        this.dropping.splice(i, 1);
+        this.audio.thud();
+      }
+    }
 
     // wand sway + cast flick
     if (this.castAnim > 0) this.castAnim = Math.max(0, this.castAnim - dt * 3.2);

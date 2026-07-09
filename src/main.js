@@ -113,7 +113,34 @@ document.addEventListener('pointerlockerror', () => {
 });
 window.addEventListener('blur', () => { player.keys = {}; });
 
+// ── house points ─────────────────────────────────────────────────────────────
+let points = 50;
+function addPoints(delta) {
+  points = Math.max(0, points + delta);
+  ui.setPoints(points, delta);
+  world.setHousePoints(points);
+  persist();
+}
+
 // ── creature events ──────────────────────────────────────────────────────────
+creatures.onSpotted = () => {
+  audio.yowl();
+  ui.caption('Mrs. Norris’s lamp-like eyes flash — a yowl echoes down the corridor. Filch is coming!', 4500);
+};
+creatures.onFilchCaught = () => {
+  audio.faint();
+  addPoints(-20);
+  ui.faint('Caught! Filch: “Students out of bed! Twenty points from Gryffindor!”', () => {
+    player.teleport(0, 8, Math.PI, 0);
+    creatures.filchReset();
+  });
+};
+creatures.onFilchLost = () => {
+  ui.caption('You’ve given Filch the slip… for now.', 3500);
+};
+spells.onIgnite = (ig) => {
+  if (!ig._scored) { ig._scored = true; addPoints(1); }
+};
 creatures.onBanish = () => {
   audio.banish();
   ui.caption('The Dementor shreds apart with a distant shriek!', 3600);
@@ -177,9 +204,59 @@ function updateQuests() {
     if (q.onDone) ui.caption(q.onDone, 4200);
     audio.chime();
     questIdx += 1;
+    addPoints(10);
     if (quests[questIdx]) ui.objective(quests[questIdx].text);
   }
 }
+
+// ── save / load (localStorage; add ?reset to the URL to start over) ─────────
+const SAVE_KEY = 'hogwarts-after-curfew';
+if (Q.has('reset')) localStorage.removeItem(SAVE_KEY);
+function persist() {
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify({
+      q: questIdx,
+      p: points,
+      doors: Object.fromEntries(world.doors.map((d) => [d.id, [d.locked ? 1 : 0, d.target]])),
+      ign: world.ignitables.map((ig) => (ig.lit ? 1 : 0)),
+      pos: [+player.pos.x.toFixed(1), +player.pos.z.toFixed(1), +player.yaw.toFixed(2)],
+    }));
+  } catch (e) { /* storage unavailable — play unsaved */ }
+}
+(function restore() {
+  let s = null;
+  try { s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch (e) {}
+  if (!s) return;
+  if (s.doors) {
+    for (const [id, st] of Object.entries(s.doors)) {
+      const d = world.doorByName[id];
+      if (!d || !Array.isArray(st)) continue;
+      d.locked = !!st[0];
+      d.target = st[1] || 0;
+      d.openT = d.target;
+    }
+  }
+  if (Array.isArray(s.ign)) {
+    s.ign.forEach((lit, i) => {
+      const ig = world.ignitables[i];
+      if (!ig) return;
+      if (lit && !ig.lit) { world.ignite(ig); ig._scored = true; }
+      else if (!lit && ig.lit) world.extinguish(ig);
+    });
+  }
+  if (typeof s.q === 'number') {
+    questIdx = Math.min(Math.max(0, s.q), quests.length - 1);
+    ui.objective(quests[questIdx].text);
+  }
+  if (typeof s.p === 'number') points = Math.max(0, s.p);
+  if (Array.isArray(s.pos)) player.teleport(s.pos[0], s.pos[1], s.pos[2] || 0);
+})();
+ui.setPoints(points);
+world.setHousePoints(points);
+let saveT = 0;
+let owlT = 12;
+let dripT = 8;
+let stepAlt = false;
 
 // ── debug / QA hooks ─────────────────────────────────────────────────────────
 window.__game = {
@@ -194,14 +271,14 @@ window.__game = {
     player.teleport(x, z, yaw, pitch, y);
   },
   cast(name) {
-    const i = ['lumos', 'nox', 'alohomora', 'incendio', 'aguamenti', 'patronum'].indexOf(name);
+    const i = ['lumos', 'nox', 'alohomora', 'incendio', 'aguamenti', 'leviosa', 'patronum'].indexOf(name);
     if (i >= 0) { spells.select(i); spells.cast(i); }
   },
   openAll() {
     for (const d of world.doors) { d.locked = false; d.target = 1; }
   },
   noCatch(v) { creatures.catchEnabled = !v; },
-  scene, camera, renderer,
+  scene, camera, renderer, creatures, player,
   state() {
     return {
       pos: [player.pos.x, player.pos.y, player.pos.z].map((v) => +v.toFixed(2)),
@@ -211,6 +288,13 @@ window.__game = {
       lumos: spells.lumosOn,
       banished: creatures.banishedCount,
       sconcesLit: world.ignitables.filter((i) => i.lit).length,
+      points,
+      norris: { state: creatures.norris.state, pos: [+creatures.norris.x.toFixed(1), +creatures.norris.z.toFixed(1)] },
+      filch: {
+        active: creatures.filch.active,
+        pos: [+creatures.filch.group.position.x.toFixed(1), +creatures.filch.group.position.z.toFixed(1)],
+      },
+      holding: spells.held ? spells.held.userData.name : null,
       chill: +creatures.chill.toFixed(2),
       doors: Object.fromEntries(world.doors.map((d) => [d.id, { locked: d.locked, open: +d.openT.toFixed(2) }])),
       dementors: creatures.dementors.map((d) => ({ state: d.state, pos: [+d.x.toFixed(1), +d.z.toFixed(1)] })),
@@ -268,8 +352,27 @@ function frame() {
 
   player.update(dt);
   world.update(dt, t, player.pos);
-  creatures.update(dt, t, player);
+  creatures.update(dt, t, player, spells.lumosOn);
   spells.update(dt, t);
+
+  // footsteps + night ambience
+  if (player.stepPulse) {
+    player.stepPulse = false;
+    stepAlt = !stepAlt;
+    audio.step(stepAlt);
+  }
+  owlT -= dt;
+  if (owlT <= 0) {
+    owlT = 10 + Math.random() * 18;
+    if (player.pos.z > 14 && player.pos.y > -1) audio.owl();
+  }
+  dripT -= dt;
+  if (dripT <= 0) {
+    dripT = 5 + Math.random() * 9;
+    if (player.pos.y < -2.5) audio.drip();
+  }
+  saveT += dt;
+  if (saveT > 5) { saveT = 0; persist(); }
 
   ui.chill(creatures.chill);
   audio.dementor(creatures.chill);

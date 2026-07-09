@@ -19,6 +19,7 @@ export class Player {
     this.enabled = false;   // true while playing (pointer locked or debug)
     this.debug = false;
     this.moveT = 0;         // head-bob phase
+    this.stepPulse = false; // set true on each footfall, consumed by main
     this.moving = false;
     this.vel = new THREE.Vector2(0, 0);
 
@@ -120,9 +121,11 @@ export class Player {
       }
     }
 
-    // head bob
+    // head bob (each half-cycle of the bob is one footfall)
     if (this.moving && this.grounded) {
+      const prev = Math.sin(this.moveT);
       this.moveT += dt * (run ? 11 : 7.5);
+      if (Math.sin(this.moveT) * prev < 0) this.stepPulse = true;
     }
     const bob = this.moving && this.grounded ? Math.sin(this.moveT) * 0.045 : 0;
 

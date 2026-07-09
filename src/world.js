@@ -520,6 +520,7 @@ export function buildWorld(scene) {
   // house-point hourglasses along the north wall
   const houses = ['gryffindor', 'slytherin', 'ravenclaw', 'hufflepuff'];
   const sandColors = [0xd3352b, 0x2fae66, 0x3a6bd8, 0xe8c832];
+  let gryffSand = null;
   houses.forEach((h, i) => {
     const hx = 0 + i * 1.5;
     box(hx - 0.32, 0, -5.95, hx + 0.32, 0.85, -5.35, mats.stoneDark, { collide: false });
@@ -532,10 +533,18 @@ export function buildWorld(scene) {
     );
     sand.position.set(hx, 1.2, -5.65);
     staticG.add(sand);
+    if (i === 0) gryffSand = sand; // the player's house — points move this column
     const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.09, 12), mats.gold);
     cap.position.set(hx, 2.06, -5.65);
     staticG.add(cap);
   });
+  // gem column height tracks house points (bottom edge stays put)
+  function setHousePoints(n) {
+    if (!gryffSand) return;
+    const s = Math.max(0.2, Math.min(1.7, 0.3 + n / 70));
+    gryffSand.scale.y = s;
+    gryffSand.position.y = 0.95 + 0.25 * s;
+  }
   colliders.push({ minX: -0.5, maxX: 5, minY: 0, maxY: 2.1, minZ: -6, maxZ: -5.3 });
 
   // chandelier
@@ -1071,6 +1080,44 @@ export function buildWorld(scene) {
   addDoor({ id: 'potions', name: 'Potions Store', x: -30.5, z: -19.9, width: 2.2, height: 3, axis: 'z', double: false, locked: true, baseY: -5, swing: -1 });
   const doorByName = Object.fromEntries(doors.map((d) => [d.id, d]));
 
+  // ═══ LIFTABLE PROPS (Wingardium Leviosa) — individual, never merged ══════
+  const liftG = new THREE.Group();
+  scene.add(liftG);
+  function liftable(mesh, name, restH) {
+    mesh.userData.liftable = true;
+    mesh.userData.name = name;
+    mesh.userData.restH = restH;
+    liftG.add(mesh);
+  }
+  {
+    const crateG = new THREE.BoxGeometry(0.42, 0.42, 0.42);
+    const c1 = new THREE.Mesh(crateG, mats.woodDark);
+    c1.position.set(8.5, 0.21, 11);
+    liftable(c1, 'crate', 0.21);
+    const c2 = new THREE.Mesh(crateG, mats.woodDark);
+    c2.position.set(6, -4.79, -22);
+    liftable(c2, 'crate', 0.21);
+    const bookMat = new THREE.MeshLambertMaterial({ color: 0x5a2020 });
+    const bookG = new THREE.BoxGeometry(0.26, 0.06, 0.2);
+    const b1 = new THREE.Mesh(bookG, bookMat);
+    b1.position.set(-42.3, 1.35, -4);
+    liftable(b1, 'book', 0.03);
+    const b2 = new THREE.Mesh(bookG, new THREE.MeshLambertMaterial({ color: 0x23335a }));
+    b2.position.set(35.2, 0.88, 12.6);
+    liftable(b2, 'book', 0.03);
+    const gob = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.032, 0.095, 8), mats.gold);
+    gob.position.set(19, 0.4, 7.45);
+    liftable(gob, 'goblet', 0.05);
+    const flask = new THREE.Group();
+    const fbody = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8),
+      new THREE.MeshStandardMaterial({ color: 0x7a5cff, emissive: 0x7a5cff, emissiveIntensity: 0.7, roughness: 0.3 }));
+    const fneck = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.024, 0.09, 8), mats.glass);
+    fneck.position.y = 0.1;
+    flask.add(fbody, fneck);
+    flask.position.set(-38.6, -4.05, -20.9);
+    liftable(flask, 'flask', 0.08);
+  }
+
   // ═══ FLAME PARTICLES (single Points draw call) ═══════════════════════════
   const flameGeo = new THREE.BufferGeometry();
   const flamePos = new Float32Array(flameDefs.length * 3);
@@ -1132,6 +1179,26 @@ export function buildWorld(scene) {
     doorAABBs.length = 0;
     for (const d of doors) if (d.blocking) doorAABBs.push(d.aabb);
     return doorAABBs.length ? colliders.concat(doorAABBs) : colliders;
+  }
+
+  // Rough ambient light level at a point — sums nearby active light sources
+  // plus moonlight outdoors. Mrs. Norris sees much farther in the light.
+  function lightLevelAt(x, y, z) {
+    let level = 0;
+    for (const d of lightDescs) {
+      if (!d.on) continue;
+      const dd = (d.x - x) ** 2 + (d.y - y) ** 2 + (d.z - z) ** 2;
+      level += d.intensity / (1 + dd);
+    }
+    if (y > -1 && z > 13.6) level += 1.2; // moonlit courtyard
+    return level;
+  }
+
+  // A movable light source (e.g. Filch's lantern): caller updates x/y/z and `on`.
+  function dynamicLight(color, intensity, distance) {
+    const d = { x: 0, y: -999, z: 0, color, intensity, distance, on: false, amp: 0.3, phase: Math.random() * 9, speed: 7 };
+    lightDescs.push(d);
+    return d;
   }
 
   // Floor height for teleports: prefer the actual room at that column
@@ -1212,7 +1279,8 @@ export function buildWorld(scene) {
   return {
     colliders, doors, doorByName, groundHeight, teleportGround, activeColliders, update, zones, inZone,
     doorsAnimating, ignitables, ignite, extinguish,
-    raycastRoot: [staticG, doorsG],
+    setHousePoints, lightLevelAt, dynamicLight,
+    raycastRoot: [staticG, doorsG, liftG],
     spawn: { x: 0, z: 38, yaw: 0 },
     glowTex, coldGlowTex,
     dementorSpawns: [[-26, -20], [-10, -20], [2, -20]],

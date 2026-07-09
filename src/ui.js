@@ -10,7 +10,10 @@ export class UI {
       faint: document.getElementById('faint'),
       fainttext: document.getElementById('fainttext'),
       slots: [...document.querySelectorAll('#spellbar .slot')],
+      points: document.getElementById('points'),
+      pointsval: document.getElementById('pointsval'),
     };
+    this._pointsTimer = null;
     this._capTimer = null;
     this._fainting = false;
     this.onStart = null;
@@ -57,6 +60,17 @@ export class UI {
 
   setLumos(on) {
     this.el.slots[0].classList.toggle('lit', on);
+  }
+
+  setPoints(n, delta = 0) {
+    this.el.pointsval.textContent = n;
+    if (delta !== 0) {
+      this.el.points.classList.remove('gain', 'loss');
+      void this.el.points.offsetWidth; // restart the flash
+      this.el.points.classList.add(delta > 0 ? 'gain' : 'loss');
+      clearTimeout(this._pointsTimer);
+      this._pointsTimer = setTimeout(() => this.el.points.classList.remove('gain', 'loss'), 1200);
+    }
   }
 
   chill(level) {

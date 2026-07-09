@@ -50,9 +50,23 @@ load JS modules from plain files; use the standalone build for that.)
   the dungeon torches, the Great Hall table candles, the classroom and potion-store
   candelabras…
 - **Aguamenti** `5` — a jet of water that douses anything Incendio can light.
+- **Wingardium Leviosa** `6` — levitates the loose props scattered around
+  (crates, books, a goblet, a potion flask). Cast again to set them down.
 - **Expecto Patronum** `0` — conjures a silver stag that charges ahead and banishes
   Dementors. Don't let them touch you, or you'll wake up in the Entrance Hall with
   a mouthful of chocolate.
+
+### After curfew means after curfew
+
+**Mrs. Norris** patrols the ground floor. Her sight depends on light: with your wand
+lit she'll spot you from across the corridor; in darkness you can slip within a few
+paces of her. If she sees you, she yowls — and **Filch** comes shuffling with his
+lantern. Get caught and it's *twenty points from Gryffindor*.
+
+**House points** (top-right, and the ruby hourglass in the Entrance Hall) go up as
+you complete objectives and light sconces, and down when Filch catches you.
+Progress saves automatically (add `?reset` to the URL to start over).
+**Nearly Headless Nick** haunts the Great Hall. He minds his own business.
 
 The objective panel (top-left) walks you through all four. After that, the castle is yours:
 the Great Hall with its floating candles and enchanted ceiling, the Grand Staircase with its

@@ -333,6 +333,94 @@ export class AudioFX {
     o.stop(t + 1.6);
   }
 
+  step(alt = false) {
+    if (!this.ok) return;
+    const t = this.ctx.currentTime;
+    const src = this.ctx.createBufferSource();
+    src.buffer = this._noise(0.08);
+    const lp = this.ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = alt ? 380 : 460;
+    const g = this.ctx.createGain();
+    this._env(g, t, 0.004, 0.05, 0.06);
+    src.connect(lp).connect(g).connect(this.master);
+    src.start(t);
+    src.stop(t + 0.09);
+  }
+
+  owl() {
+    if (!this.ok) return;
+    const t = this.ctx.currentTime;
+    [[540, 0, 0.1], [468, 0.22, 0.38]].forEach(([f, dt, dur]) => {
+      const o = this.ctx.createOscillator();
+      o.type = 'triangle';
+      o.frequency.setValueAtTime(f, t + dt);
+      o.frequency.linearRampToValueAtTime(f * 0.93, t + dt + dur);
+      const lp = this.ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 900;
+      const g = this.ctx.createGain();
+      this._env(g, t + dt, 0.04, 0.05, dur);
+      o.connect(lp).connect(g).connect(this.master);
+      o.start(t + dt);
+      o.stop(t + dt + dur + 0.1);
+    });
+  }
+
+  drip() {
+    if (!this.ok) return;
+    const t = this.ctx.currentTime;
+    [[0, 0.06], [0.19, 0.024]].forEach(([dt, vol]) => {
+      const o = this.ctx.createOscillator();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(1500, t + dt);
+      o.frequency.exponentialRampToValueAtTime(620, t + dt + 0.05);
+      const g = this.ctx.createGain();
+      this._env(g, t + dt, 0.003, vol, 0.09);
+      o.connect(g).connect(this.master);
+      o.start(t + dt);
+      o.stop(t + dt + 0.12);
+    });
+  }
+
+  yowl() {
+    if (!this.ok) return;
+    const t = this.ctx.currentTime;
+    [[0, 780, 430, 0.5], [0.4, 900, 480, 0.45]].forEach(([dt, f0, f1, dur]) => {
+      const o = this.ctx.createOscillator();
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(f0, t + dt);
+      o.frequency.exponentialRampToValueAtTime(f1, t + dt + dur);
+      const vib = this.ctx.createOscillator();
+      vib.frequency.value = 9;
+      const vg = this.ctx.createGain();
+      vg.gain.value = 28;
+      vib.connect(vg).connect(o.frequency);
+      const lp = this.ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 1600;
+      const g = this.ctx.createGain();
+      this._env(g, t + dt, 0.05, 0.075, dur);
+      o.connect(lp).connect(g).connect(this.master);
+      o.start(t + dt); vib.start(t + dt);
+      o.stop(t + dt + dur + 0.1); vib.stop(t + dt + dur + 0.1);
+    });
+  }
+
+  thud() {
+    if (!this.ok) return;
+    const t = this.ctx.currentTime;
+    const o = this.ctx.createOscillator();
+    o.type = 'triangle';
+    o.frequency.setValueAtTime(95, t);
+    o.frequency.exponentialRampToValueAtTime(55, t + 0.1);
+    const g = this.ctx.createGain();
+    this._env(g, t, 0.004, 0.16, 0.13);
+    o.connect(g).connect(this.master);
+    o.start(t);
+    o.stop(t + 0.16);
+  }
+
   chime() {
     if (!this.ok) return;
     const t = this.ctx.currentTime;
