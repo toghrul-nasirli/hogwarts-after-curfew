@@ -382,6 +382,10 @@ window.__game = {
     for (const d of world.doors) { d.locked = false; d.target = 1; }
   },
   noCatch(v) { creatures.catchEnabled = !v; },
+  cloak(v) {
+    if (v && !hasCloak) { hasCloak = true; world.takeCloak(); }
+    setCloak(v);
+  },
   scene, camera, renderer, creatures, player,
   state() {
     return {

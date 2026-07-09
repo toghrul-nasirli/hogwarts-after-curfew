@@ -440,9 +440,12 @@ class MrsNorris {
     if (this.cooldown > 0) this.cooldown -= dt;
 
     if (this.state === 'alert') {
-      // sit and stare at the player while Filch closes in
-      const dy = Math.atan2(player.pos.x - this.x, player.pos.z - this.z) - this.group.rotation.y;
-      this.group.rotation.y += Math.atan2(Math.sin(dy), Math.cos(dy)) * Math.min(1, 5 * dt);
+      // sit and stare at the player while Filch closes in — unless the player
+      // has melted from sight, in which case she stares at nothing, unnerved
+      if (!cloaked) {
+        const dy = Math.atan2(player.pos.x - this.x, player.pos.z - this.z) - this.group.rotation.y;
+        this.group.rotation.y += Math.atan2(Math.sin(dy), Math.cos(dy)) * Math.min(1, 5 * dt);
+      }
       return;
     }
 
@@ -526,11 +529,16 @@ class Filch {
     this.lantern = world.dynamicLight(0xffb168, 6, 12);
     this.active = false;
     this.timer = 0;
+    this.lastSeen = { x: 0, z: 0 }; // where the trespasser was last VISIBLE
+    this.searchT = 0;
   }
 
-  spawn() {
+  spawn(playerPos) {
     this.active = true;
     this.timer = 0;
+    this.searchT = 0;
+    this.lastSeen.x = playerPos.x;
+    this.lastSeen.z = playerPos.z;
     // always shuffles in from the caretaker's office at the corridor's far end
     this.group.position.set(44, 0, 4);
     this.group.visible = true;
@@ -547,16 +555,35 @@ class Filch {
   update(dt, t, player, catchEnabled, cloaked, onCaught, onGaveUp) {
     if (!this.active) return;
     this.timer += dt;
-    const dx = player.pos.x - this.group.position.x;
-    const dz = player.pos.z - this.group.position.z;
+    // he can only chase what he can see — the cloak freezes his target at the
+    // spot where you vanished
+    if (!cloaked) {
+      this.lastSeen.x = player.pos.x;
+      this.lastSeen.z = player.pos.z;
+      this.searchT = 0;
+    }
+    const dx = this.lastSeen.x - this.group.position.x;
+    const dz = this.lastSeen.z - this.group.position.z;
     const d = Math.hypot(dx, dz);
-    collideMove(this.world, this.group.position, (dx / d || 0) * 2.2 * dt, (dz / d || 0) * 2.2 * dt, 0.32, 0);
-    this.group.rotation.y = Math.atan2(dx, dz);
+    if (d > 0.6) {
+      collideMove(this.world, this.group.position, (dx / d) * 2.2 * dt, (dz / d) * 2.2 * dt, 0.32, 0);
+      this.group.rotation.y = Math.atan2(dx, dz);
+    } else if (cloaked) {
+      // he's reached the spot where you melted away: peer about, then quit
+      this.searchT += dt;
+      this.group.rotation.y += dt * 1.6;
+      if (this.searchT > 2.5) {
+        this.despawn();
+        onGaveUp();
+        return;
+      }
+    }
     this.group.rotation.z = Math.sin(t * 6) * 0.045; // shuffling rock
     this.lantern.x = this.group.position.x + Math.sin(this.group.rotation.y) * 0.35;
     this.lantern.y = 1.1;
     this.lantern.z = this.group.position.z + Math.cos(this.group.rotation.y) * 0.35;
-    if (d < 1.4 && Math.abs(player.pos.y) < 1.5 && catchEnabled && !cloaked) {
+    const pd = Math.hypot(player.pos.x - this.group.position.x, player.pos.z - this.group.position.z);
+    if (pd < 1.4 && Math.abs(player.pos.y) < 1.5 && catchEnabled && !cloaked) {
       this.despawn();
       onCaught();
       return;
@@ -612,7 +639,7 @@ export class Creatures {
   update(dt, t, player, lumosOn = false, cloaked = false) {
     this.ghost.update(dt, t);
     this.norris.update(dt, t, player, lumosOn, cloaked, () => {
-      this.filch.spawn();
+      this.filch.spawn(player.pos);
       if (this.onSpotted) this.onSpotted();
     });
     this.filch.update(dt, t, player, this.catchEnabled, cloaked,
