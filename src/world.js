@@ -115,6 +115,7 @@ export function buildWorld(scene) {
   const colliders = [];
   const regions = [];   // flat floor rects: {minX,maxX,minZ,maxZ,y}
   const ramps = [];     // sloped rects:     {minX,maxX,minZ,maxZ, z0,y0, z1,y1}
+  const surfaces = [];  // non-collider ledges things can rest on: {minX..maxZ, y}
   const doors = [];
   const updatables = [];
   const flickerLights = [];
@@ -281,6 +282,16 @@ export function buildWorld(scene) {
     for (const d of ig.defs) d.unlit = false;
     if (ig.light) ig.light.on = true;
     return true;
+  }
+
+  // Props Wingardium Leviosa can pick up — individual meshes, never merged
+  const liftG = new THREE.Group();
+  scene.add(liftG);
+  function liftable(mesh, name, restH) {
+    mesh.userData.liftable = true;
+    mesh.userData.name = name;
+    mesh.userData.restH = restH;
+    liftG.add(mesh);
   }
 
   // Aguamenti undoes Incendio: douse anything burning (its light goes with it)
@@ -1022,15 +1033,17 @@ export function buildWorld(scene) {
   pointLight(-36, -3.6, -22, 0x59ffa0, 3, 10, 0.3);
   pointLight(-38, -3.2, -18.5, 0xffb168, 1.8, 8, 0.3);
   torch(-41.85, -2.9, -20, 'e', true); // one more sconce for Incendio practice
-  // shelves with glowing bottles on the north wall
+  // shelves with glowing bottles on the north wall (ledges you can rest things on)
   for (const sy of [-3.6, -2.9, -2.2]) {
     box(-41, sy - 0.05, -24.9, -33, sy, -24.35, mats.woodDark, { collide: false });
+    surfaces.push({ minX: -41, maxX: -33, minZ: -24.9, maxZ: -24.35, y: sy });
   }
   {
     // glowing potion bottles — each carries its own colour so they read as
     // potions, not white candles
-    // all 26 glowing flasks merge into ONE vertex-colored self-lit mesh
-    const bottleGeos = [];
+    // every flask is its own liftable mesh — body+neck+cork baked into one
+    // vertex-colored geometry, all 26 sharing a single self-lit material
+    const bottleMat = new THREE.MeshBasicMaterial({ vertexColors: true });
     const tintGeo = (g, col) => {
       const n = g.attributes.position.count;
       const arr = new Float32Array(n * 3);
@@ -1038,6 +1051,7 @@ export function buildWorld(scene) {
       g.setAttribute('color', new THREE.BufferAttribute(arr, 3));
       return g;
     };
+    const corkCol = new THREE.Color(0x4a3520);
     let bs = 17;
     const brand = () => (bs = (bs * 16807 + 19) % 2147483647) / 2147483647;
     for (let i = 0; i < 26; i++) {
@@ -1046,18 +1060,15 @@ export function buildWorld(scene) {
       const col = new THREE.Color().setHSL(brand(), 0.9, 0.42);
       const body = new THREE.SphereGeometry(0.075, 10, 8); // round flask belly
       body.scale(1, 1.15, 1);
-      body.translate(bx, sy + 0.08, -24.6);
-      bottleGeos.push(tintGeo(body, col));
       const neck = new THREE.CylinderGeometry(0.02, 0.026, 0.1, 8);
-      neck.translate(bx, sy + 0.2, -24.6);
-      bottleGeos.push(tintGeo(neck, col));
+      neck.translate(0, 0.12, 0);
       const cork = new THREE.CylinderGeometry(0.026, 0.026, 0.04, 6);
-      cork.translate(bx, sy + 0.27, -24.6);
-      addMerged(cork, mats.woodDark);
+      cork.translate(0, 0.19, 0);
+      const geo = mergeGeometries([tintGeo(body, col), tintGeo(neck, col), tintGeo(cork, corkCol)], false);
+      const m = new THREE.Mesh(geo, bottleMat);
+      m.position.set(bx, sy + 0.09, -24.6);
+      liftable(m, 'bottle', 0.09);
     }
-    const bottles = new THREE.Mesh(mergeGeometries(bottleGeos, false),
-      new THREE.MeshBasicMaterial({ vertexColors: true }));
-    staticG.add(bottles);
   }
   colliders.push({ minX: -41.2, maxX: -32.8, minY: -5.2, maxY: -2, minZ: -25, maxZ: -24.3 });
   // work table with a candelabra worth lighting
@@ -1081,14 +1092,6 @@ export function buildWorld(scene) {
   const doorByName = Object.fromEntries(doors.map((d) => [d.id, d]));
 
   // ═══ LIFTABLE PROPS (Wingardium Leviosa) — individual, never merged ══════
-  const liftG = new THREE.Group();
-  scene.add(liftG);
-  function liftable(mesh, name, restH) {
-    mesh.userData.liftable = true;
-    mesh.userData.name = name;
-    mesh.userData.restH = restH;
-    liftG.add(mesh);
-  }
   {
     const crateG = new THREE.BoxGeometry(0.42, 0.42, 0.42);
     const c1 = new THREE.Mesh(crateG, mats.woodDark);
@@ -1201,6 +1204,23 @@ export function buildWorld(scene) {
     return d;
   }
 
+  // Highest thing at (x,z) that an object falling from fromY can rest on:
+  // floors/ramps, collider tops (tables, pedestals, crates), and shelf ledges.
+  function surfaceHeightAt(x, z, fromY) {
+    let best = groundHeight(x, z, fromY);
+    for (const b of colliders) {
+      if (x >= b.minX && x <= b.maxX && z >= b.minZ && z <= b.maxZ) {
+        if (b.maxY <= fromY + 0.01 && b.maxY > best) best = b.maxY;
+      }
+    }
+    for (const s of surfaces) {
+      if (x >= s.minX && x <= s.maxX && z >= s.minZ && z <= s.maxZ) {
+        if (s.y <= fromY + 0.01 && s.y > best) best = s.y;
+      }
+    }
+    return best;
+  }
+
   // Floor height for teleports: prefer the actual room at that column
   // (lowest explicit region), not the "highest walkable" rule used for stepping.
   function teleportGround(x, z) {
@@ -1279,7 +1299,7 @@ export function buildWorld(scene) {
   return {
     colliders, doors, doorByName, groundHeight, teleportGround, activeColliders, update, zones, inZone,
     doorsAnimating, ignitables, ignite, extinguish,
-    setHousePoints, lightLevelAt, dynamicLight,
+    setHousePoints, lightLevelAt, dynamicLight, surfaceHeightAt,
     raycastRoot: [staticG, doorsG, liftG],
     spawn: { x: 0, z: 38, yaw: 0 },
     glowTex, coldGlowTex,

@@ -227,7 +227,7 @@ export class SpellSystem {
             : 'Wingardium Levi-O-sa! ("It’s Levi-O-sa, not Levio-SA.")');
           this._leviosaJoked = true;
         } else {
-          this.ui.caption('Nothing light enough to levitate there. (Try a crate, book, goblet or flask.)');
+          this.ui.caption('Nothing light enough to levitate there. (Try a crate, book, goblet, or the potion bottles.)');
         }
         break;
       }
@@ -353,12 +353,15 @@ export class SpellSystem {
     }
     for (let i = this.dropping.length - 1; i >= 0; i--) {
       const d = this.dropping[i];
+      const restH = d.mesh.userData.restH || 0.15;
+      // find the landing surface BEFORE moving, so fast falls can't tunnel
+      // through thin shelves and tabletops
+      const preBottom = d.mesh.position.y - restH;
+      const surf = this.world.surfaceHeightAt(d.mesh.position.x, d.mesh.position.z, preBottom + 0.02);
       d.vy -= 14 * dt;
       d.mesh.position.y += d.vy * dt;
-      const rest = this.world.groundHeight(d.mesh.position.x, d.mesh.position.z, d.mesh.position.y + 1)
-        + (d.mesh.userData.restH || 0.15);
-      if (d.mesh.position.y <= rest) {
-        d.mesh.position.y = rest;
+      if (d.mesh.position.y - restH <= surf) {
+        d.mesh.position.y = surf + restH;
         this.dropping.splice(i, 1);
         this.audio.thud();
       }
