@@ -341,14 +341,14 @@ export class SpellSystem {
     this.held = null;
   }
 
-  update(dt, t) {
+  update(dt, time) {
     if (this.patronusCooldown > 0) this.patronusCooldown -= dt;
 
     // Wingardium Leviosa: carried object floats ahead of the wand
     if (this.held) {
       const target = this.camera.getWorldPosition(new THREE.Vector3())
         .add(this.camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(2.3));
-      target.y += Math.sin(t * 2.2) * 0.06;
+      target.y += Math.sin(time * 2.2) * 0.06;
       this.held.position.lerp(target, 1 - Math.exp(-8 * dt));
       this.held.rotation.y += dt * 0.9;
     }
@@ -372,7 +372,7 @@ export class SpellSystem {
     if (this.castAnim > 0) this.castAnim = Math.max(0, this.castAnim - dt * 3.2);
     const flick = Math.sin(this.castAnim * Math.PI) * 0.5;
     const sway = this.player.moving ? Math.sin(this.player.moveT * 0.5) * 0.012 : 0;
-    this.wandRoot.position.set(0.34 + sway, -0.28 + Math.sin(t * 1.3) * 0.006, -0.35);
+    this.wandRoot.position.set(0.34 + sway, -0.28 + Math.sin(time * 1.3) * 0.006, -0.35);
     this.wandRoot.rotation.x = -flick * 0.7;
     this.wandRoot.rotation.z = flick * 0.15;
 
@@ -380,8 +380,8 @@ export class SpellSystem {
     const targetI = this.lumosOn ? 26 : 0;
     this.lumosLight.intensity += (targetI - this.lumosLight.intensity) * Math.min(1, 8 * dt);
     if (this.lumosOn) {
-      this.lumosLight.intensity *= 0.97 + Math.sin(t * 9.7) * 0.03;
-      this.lumosGlow.material.opacity = 0.85 + Math.sin(t * 7.3) * 0.1;
+      this.lumosLight.intensity *= 0.97 + Math.sin(time * 9.7) * 0.03;
+      this.lumosGlow.material.opacity = 0.85 + Math.sin(time * 7.3) * 0.1;
     } else {
       this.lumosGlow.material.opacity = Math.max(0, this.lumosGlow.material.opacity - dt * 3);
     }

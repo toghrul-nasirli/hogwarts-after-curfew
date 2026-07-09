@@ -396,6 +396,16 @@ let ftAcc = 0, ftN = 0, ftSkip = 150;
 
 function frame() {
   requestAnimationFrame(frame);
+  try {
+    frameBody();
+  } catch (e) {
+    // one bad frame must never freeze the picture — log it and keep rendering
+    window.__errors.push(String(e && e.message || e));
+    try { renderer.render(scene, camera); } catch (e2) { /* next frame */ }
+  }
+}
+
+function frameBody() {
   timer.update();
   const dt = Math.min(timer.getDelta(), 0.05);
   const t = timer.getElapsed();
