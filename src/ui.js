@@ -12,14 +12,33 @@ export class UI {
       slots: [...document.querySelectorAll('#spellbar .slot')],
       points: document.getElementById('points'),
       pointsval: document.getElementById('pointsval'),
+      sorting: document.getElementById('sorting'),
     };
     this._pointsTimer = null;
     this._capTimer = null;
     this._fainting = false;
     this.onStart = null;
-    this.el.overlay.addEventListener('click', () => {
+    this.onHouse = null; // (value: '0'..'3' | 'hat') => {}
+    this.el.overlay.addEventListener('click', (e) => {
+      // clicks inside the sorting panel are handled by the house buttons
+      if (this.el.sorting.classList.contains('show')) return;
       if (this.onStart) this.onStart();
     });
+    for (const b of this.el.sorting.querySelectorAll('.house')) {
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (this.onHouse) this.onHouse(b.dataset.house);
+      });
+    }
+  }
+
+  showSorting() { this.el.sorting.classList.add('show'); }
+  hideSorting() { this.el.sorting.classList.remove('show'); }
+
+  setHouse(name, color) {
+    const head = this.el.points.querySelector('.head');
+    head.textContent = name;
+    head.style.color = color;
   }
 
   hideOverlay() { this.el.overlay.classList.add('hidden'); }

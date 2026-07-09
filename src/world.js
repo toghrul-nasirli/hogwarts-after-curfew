@@ -531,7 +531,7 @@ export function buildWorld(scene) {
   // house-point hourglasses along the north wall
   const houses = ['gryffindor', 'slytherin', 'ravenclaw', 'hufflepuff'];
   const sandColors = [0xd3352b, 0x2fae66, 0x3a6bd8, 0xe8c832];
-  let gryffSand = null;
+  const houseSands = [];
   houses.forEach((h, i) => {
     const hx = 0 + i * 1.5;
     box(hx - 0.32, 0, -5.95, hx + 0.32, 0.85, -5.35, mats.stoneDark, { collide: false });
@@ -544,17 +544,27 @@ export function buildWorld(scene) {
     );
     sand.position.set(hx, 1.2, -5.65);
     staticG.add(sand);
-    if (i === 0) gryffSand = sand; // the player's house — points move this column
+    houseSands.push(sand);
     const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.09, 12), mats.gold);
     cap.position.set(hx, 2.06, -5.65);
     staticG.add(cap);
   });
-  // gem column height tracks house points (bottom edge stays put)
+  // the player's house hourglass tracks their points (bottom edge stays put)
+  let pointsHouseIdx = 0;
+  function setHouse(i) {
+    pointsHouseIdx = Math.max(0, Math.min(3, i));
+    // reset all columns to their idle look first
+    for (const sand of houseSands) {
+      sand.scale.y = 1;
+      sand.position.y = 1.2;
+    }
+  }
   function setHousePoints(n) {
-    if (!gryffSand) return;
+    const sand = houseSands[pointsHouseIdx];
+    if (!sand) return;
     const s = Math.max(0.2, Math.min(1.7, 0.3 + n / 70));
-    gryffSand.scale.y = s;
-    gryffSand.position.y = 0.95 + 0.25 * s;
+    sand.scale.y = s;
+    sand.position.y = 0.95 + 0.25 * s;
   }
   colliders.push({ minX: -0.5, maxX: 5, minY: 0, maxY: 2.1, minZ: -6, maxZ: -5.3 });
 
@@ -1299,7 +1309,7 @@ export function buildWorld(scene) {
   return {
     colliders, doors, doorByName, groundHeight, teleportGround, activeColliders, update, zones, inZone,
     doorsAnimating, ignitables, ignite, extinguish,
-    setHousePoints, lightLevelAt, dynamicLight, surfaceHeightAt,
+    setHouse, setHousePoints, lightLevelAt, dynamicLight, surfaceHeightAt,
     raycastRoot: [staticG, doorsG, liftG],
     spawn: { x: 0, z: 38, yaw: 0 },
     glowTex, coldGlowTex,

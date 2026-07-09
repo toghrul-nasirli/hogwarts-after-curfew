@@ -63,9 +63,11 @@ lit she'll spot you from across the corridor; in darkness you can slip within a 
 paces of her. If she sees you, she yowls — and **Filch** comes shuffling with his
 lantern. Get caught and it's *twenty points from Gryffindor*.
 
-**House points** (top-right, and the ruby hourglass in the Entrance Hall) go up as
-you complete objectives and light sconces, and down when Filch catches you.
-Progress saves automatically (add `?reset` to the URL to start over).
+**The Sorting Hat** greets you on your first night — pick your house (or let the
+Hat decide). **House points** (top-right, and your house's hourglass in the
+Entrance Hall) go up as you complete objectives and light sconces, and down when
+Filch catches you. Progress saves automatically (add `?reset` to the URL to
+start over — and be sorted again).
 **Nearly Headless Nick** haunts the Great Hall. He minds his own business.
 
 The objective panel (top-left) walks you through all four. After that, the castle is yours:

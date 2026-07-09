@@ -65,11 +65,32 @@ let started = false;
 let everLocked = false;
 let lockAttempt = 0;
 
+// ── the Sorting Hat ──────────────────────────────────────────────────────────
+const HOUSES = [
+  { key: 'gryffindor', name: 'Gryffindor', color: '#d3352b' },
+  { key: 'slytherin', name: 'Slytherin', color: '#2fae66' },
+  { key: 'ravenclaw', name: 'Ravenclaw', color: '#3a6bd8' },
+  { key: 'hufflepuff', name: 'Hufflepuff', color: '#e8c832' },
+];
+let houseIdx = null; // null = not yet sorted (fresh game shows the Hat)
+let pendingHouseCry = null;
+
+function applyHouse(i) {
+  houseIdx = Math.max(0, Math.min(3, i));
+  ui.setHouse(HOUSES[houseIdx].name, HOUSES[houseIdx].color);
+  world.setHouse(houseIdx);
+}
+
 function enterGame() {
   ui.hideOverlay();
   if (!started) {
     started = true;
-    ui.caption('The courtyard is deserted. The castle sleeps…', 4200);
+    if (pendingHouseCry) {
+      ui.caption(`“${pendingHouseCry.toUpperCase()}!” cries the Hat — and the castle swallows the echo. It sleeps…`, 5200);
+      pendingHouseCry = null;
+    } else {
+      ui.caption('The courtyard is deserted. The castle sleeps…', 4200);
+    }
   }
 }
 
@@ -81,8 +102,7 @@ function startWithoutLock() {
   ui.caption('Mouse capture unavailable — the view follows your mouse instead.', 5000);
 }
 
-ui.onStart = () => {
-  audio.start();
+function attemptEnter() {
   lockAttempt += 1;
   const attempt = lockAttempt;
   try {
@@ -95,6 +115,26 @@ ui.onStart = () => {
       startWithoutLock();
     }
   }, 800);
+}
+
+ui.onStart = () => {
+  audio.start();
+  if (houseIdx === null) {
+    ui.showSorting(); // first night at the castle — the Hat speaks first
+    return;
+  }
+  attemptEnter();
+};
+
+ui.onHouse = (val) => {
+  const i = val === 'hat' ? Math.floor(Math.random() * 4) : parseInt(val, 10) || 0;
+  applyHouse(i);
+  world.setHousePoints(points);
+  pendingHouseCry = HOUSES[houseIdx].name;
+  persist();
+  ui.hideSorting();
+  audio.chime();
+  attemptEnter();
 };
 
 document.addEventListener('pointerlockchange', () => {
@@ -130,7 +170,8 @@ creatures.onSpotted = () => {
 creatures.onFilchCaught = () => {
   audio.faint();
   addPoints(-20);
-  ui.faint('Caught! Filch: “Students out of bed! Twenty points from Gryffindor!”', () => {
+  const house = HOUSES[houseIdx === null ? 0 : houseIdx].name;
+  ui.faint(`Caught! Filch: “Students out of bed! Twenty points from ${house}!”`, () => {
     player.teleport(0, 8, Math.PI, 0);
     creatures.filchReset();
   });
@@ -217,6 +258,7 @@ function persist() {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       q: questIdx,
       p: points,
+      h: houseIdx,
       doors: Object.fromEntries(world.doors.map((d) => [d.id, [d.locked ? 1 : 0, d.target]])),
       ign: world.ignitables.map((ig) => (ig.lit ? 1 : 0)),
       pos: [+player.pos.x.toFixed(1), +player.pos.z.toFixed(1), +player.yaw.toFixed(2)],
@@ -227,6 +269,8 @@ function persist() {
   let s = null;
   try { s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch (e) {}
   if (!s) return;
+  // an existing save skips the Sorting (legacy saves default to Gryffindor)
+  applyHouse(typeof s.h === 'number' ? s.h : 0);
   if (s.doors) {
     for (const [id, st] of Object.entries(s.doors)) {
       const d = world.doorByName[id];
@@ -261,6 +305,7 @@ let stepAlt = false;
 // ── debug / QA hooks ─────────────────────────────────────────────────────────
 window.__game = {
   start() {
+    if (houseIdx === null) applyHouse(0); // QA runs skip the ceremony
     player.debug = true;
     player.enabled = true;
     started = true;
@@ -289,6 +334,7 @@ window.__game = {
       banished: creatures.banishedCount,
       sconcesLit: world.ignitables.filter((i) => i.lit).length,
       points,
+      house: houseIdx === null ? null : HOUSES[houseIdx].key,
       norris: { state: creatures.norris.state, pos: [+creatures.norris.x.toFixed(1), +creatures.norris.z.toFixed(1)] },
       filch: {
         active: creatures.filch.active,
