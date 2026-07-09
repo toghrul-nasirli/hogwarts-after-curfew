@@ -300,7 +300,9 @@ export class SpellSystem {
   _doorOf(obj) {
     let o = obj;
     while (o) {
-      if (o.userData && o.userData.door) return o.userData.door;
+      if (o.userData && o.userData.door) {
+        return o.userData.door.revealed === false ? null : o.userData.door;
+      }
       o = o.parent;
     }
     return null;
@@ -311,6 +313,7 @@ export class SpellSystem {
     const fwd = this.player.forward();
     let best = null, bestD = 3.6;
     for (const d of this.world.doors) {
+      if (d.revealed === false) continue;
       const dx = d.center.x - p.x, dz = d.center.z - p.z;
       const dist = Math.hypot(dx, dz);
       if (dist > bestD) continue;

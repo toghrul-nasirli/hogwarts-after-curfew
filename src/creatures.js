@@ -416,8 +416,10 @@ class MrsNorris {
   get x() { return this.group.position.x; }
   get z() { return this.group.position.z; }
 
-  // light-dependent sight: bright player = seen from afar, dark = must be close
-  _sightRadius(player, lumosOn) {
+  // light-dependent sight: bright player = seen from afar, dark = must be close.
+  // The Invisibility Cloak hides you completely — except the glow of a lit wand.
+  _sightRadius(player, lumosOn, cloaked) {
+    if (cloaked) return lumosOn ? 6 : 0;
     if (lumosOn) return 14;
     const lvl = this.world.lightLevelAt(player.pos.x, player.pos.y + 1, player.pos.z);
     return lvl > 0.12 ? 9 : 2.5;
@@ -434,7 +436,7 @@ class MrsNorris {
     return !(hits.length && hits[0].distance < dist - 0.6);
   }
 
-  update(dt, t, player, lumosOn, onSpotted) {
+  update(dt, t, player, lumosOn, cloaked, onSpotted) {
     if (this.cooldown > 0) this.cooldown -= dt;
 
     if (this.state === 'alert') {
@@ -474,7 +476,8 @@ class MrsNorris {
     this.losTimer = 0.3;
     const pdx = player.pos.x - this.x, pdz = player.pos.z - this.z;
     const pdist = Math.hypot(pdx, pdz);
-    if (pdist > this._sightRadius(player, lumosOn)) return;
+    const radius = this._sightRadius(player, lumosOn, cloaked);
+    if (radius <= 0 || pdist > radius) return;
     // must be roughly in front of her nose (local +x rotated by yaw)
     const fwdX = Math.cos(this.group.rotation.y);
     const fwdZ = -Math.sin(this.group.rotation.y);
@@ -541,7 +544,7 @@ class Filch {
     this.lantern.y = -999;
   }
 
-  update(dt, t, player, catchEnabled, onCaught, onGaveUp) {
+  update(dt, t, player, catchEnabled, cloaked, onCaught, onGaveUp) {
     if (!this.active) return;
     this.timer += dt;
     const dx = player.pos.x - this.group.position.x;
@@ -553,7 +556,7 @@ class Filch {
     this.lantern.x = this.group.position.x + Math.sin(this.group.rotation.y) * 0.35;
     this.lantern.y = 1.1;
     this.lantern.z = this.group.position.z + Math.cos(this.group.rotation.y) * 0.35;
-    if (d < 1.4 && Math.abs(player.pos.y) < 1.5 && catchEnabled) {
+    if (d < 1.4 && Math.abs(player.pos.y) < 1.5 && catchEnabled && !cloaked) {
       this.despawn();
       onCaught();
       return;
@@ -606,13 +609,13 @@ export class Creatures {
     setTimeout(() => { this._catchLock = false; }, 2500);
   }
 
-  update(dt, t, player, lumosOn = false) {
+  update(dt, t, player, lumosOn = false, cloaked = false) {
     this.ghost.update(dt, t);
-    this.norris.update(dt, t, player, lumosOn, () => {
+    this.norris.update(dt, t, player, lumosOn, cloaked, () => {
       this.filch.spawn();
       if (this.onSpotted) this.onSpotted();
     });
-    this.filch.update(dt, t, player, this.catchEnabled,
+    this.filch.update(dt, t, player, this.catchEnabled, cloaked,
       () => { if (this.onFilchCaught) this.onFilchCaught(); },
       () => { this.norris.calmDown(); if (this.onFilchLost) this.onFilchLost(); });
 

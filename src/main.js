@@ -179,6 +179,57 @@ function hintOnce(key) {
 }
 let playT = 0;
 
+// ── the Room of Requirement & the Invisibility Cloak ─────────────────────────
+let rrPasses = 0;
+let rrWasInZone = false;
+let hasCloak = false;
+let cloakOn = false;
+const cloakFx = document.getElementById('cloakfx');
+
+function setCloak(on) {
+  cloakOn = on && hasCloak;
+  spells.wandRoot.visible = !cloakOn;
+  cloakFx.classList.toggle('show', cloakOn);
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.code !== 'KeyC' || !started || !hasCloak) return;
+  setCloak(!cloakOn);
+  audio.rustle();
+  ui.caption(t(cloakOn ? 'cloakOnCap' : 'cloakOffCap'), 2600);
+});
+
+function pollRoomOfRequirement() {
+  const inZone = Math.abs(player.pos.y) < 1.5 &&
+    player.pos.x > 20 && player.pos.x < 28 && player.pos.z > 3.2 && player.pos.z < 7.8;
+  if (inZone && !rrWasInZone && !world.doorByName.room.revealed) {
+    rrPasses += 1;
+    if (rrPasses === 1) hintOnce('hintRoom');
+    if (rrPasses >= 3) {
+      world.revealRoom();
+      spells.goldSparks.burst(new THREE.Vector3(24, 1.8, 7.8), 90, 2.4, 1.1);
+      audio.chime();
+      audio.rustle();
+      ui.caption(t('roomReveal'), 5600);
+      addPoints(10);
+    }
+  }
+  rrWasInZone = inZone;
+  // the Cloak is taken by walking up to its stand
+  if (!hasCloak && world.doorByName.room.revealed) {
+    const c = world.cloakPos;
+    if (Math.abs(player.pos.y - 0) < 2 &&
+        Math.hypot(c.x - player.pos.x, c.z - player.pos.z) < 1.4) {
+      hasCloak = true;
+      world.takeCloak();
+      audio.chime();
+      ui.caption(t('cloakFound'), 7000);
+      addPoints(10);
+      persist();
+    }
+  }
+}
+
 // ── house points ─────────────────────────────────────────────────────────────
 let points = 50;
 function addPoints(delta) {
@@ -263,6 +314,8 @@ function persist() {
       ign: world.ignitables.map((ig) => (ig.lit ? 1 : 0)),
       pos: [+player.pos.x.toFixed(1), +player.pos.z.toFixed(1), +player.yaw.toFixed(2)],
       hs: [...hintsShown],
+      rr: world.doorByName.room.revealed ? 1 : 0,
+      ck: hasCloak ? 1 : 0,
     }));
   } catch (e) { /* storage unavailable — play unsaved */ }
 }
@@ -296,6 +349,8 @@ function persist() {
   if (typeof s.p === 'number') points = Math.max(0, s.p);
   if (Array.isArray(s.pos)) player.teleport(s.pos[0], s.pos[1], s.pos[2] || 0);
   if (Array.isArray(s.hs)) for (const k of s.hs) hintsShown.add(k);
+  if (s.rr) world.revealRoom();
+  if (s.ck) { hasCloak = true; world.takeCloak(); }
 })();
 ui.setPoints(points);
 world.setHousePoints(points);
@@ -345,6 +400,8 @@ window.__game = {
         pos: [+creatures.filch.group.position.x.toFixed(1), +creatures.filch.group.position.z.toFixed(1)],
       },
       holding: spells.held ? spells.held.userData.name : null,
+      room: world.doorByName.room.revealed,
+      cloak: { has: hasCloak, on: cloakOn },
       chill: +creatures.chill.toFixed(2),
       doors: Object.fromEntries(world.doors.map((d) => [d.id, { locked: d.locked, open: +d.openT.toFixed(2) }])),
       dementors: creatures.dementors.map((d) => ({ state: d.state, pos: [+d.x.toFixed(1), +d.z.toFixed(1)] })),
@@ -439,7 +496,7 @@ function frameBody() {
 
   player.update(dt);
   world.update(dt, t, player.pos);
-  creatures.update(dt, t, player, spells.lumosOn);
+  creatures.update(dt, t, player, spells.lumosOn, cloakOn);
   spells.update(dt, t);
 
   // footsteps + night ambience
@@ -471,6 +528,7 @@ function frameBody() {
   if (acc > 0.2) {
     acc = 0;
     updateQuests();
+    if (started) pollRoomOfRequirement();
     if (started) {
       playT += 0.2;
       if (playT > 45) hintOnce('hintMap');

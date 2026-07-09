@@ -80,6 +80,12 @@ const STRINGS = {
     hintCat: 'Eyes flash low in the dark ahead. Cats hunt by light — a lit wand is a lantern to them. Nox, perhaps?',
     hintLeviosa: 'The castle leaves things lying about — a swish and a flick would lift them. [6]',
     hintPoints: '(The hourglasses in the Entrance Hall keep the count. Gems rise with good work — and drain for mischief.)',
+    hintRoom: 'Between the sconces, one stretch of wall feels… expectant. As though it wonders whether you’ll walk past again.',
+    roomReveal: 'The stone ripples — and a door that was never there politely appears.',
+    cloakFound: 'Beneath the dust: a cloak woven of something like moonlight. Press C to disappear. (Dementors, mind, do not hunt with eyes.)',
+    cloakOnCap: 'You melt from sight.',
+    cloakOffCap: 'You shrug the cloak from your shoulders.',
+    door_room: 'Room of Requirement',
   },
 
   az: {
@@ -160,6 +166,12 @@ const STRINGS = {
     hintCat: 'Qarşıda, qaranlıqda alçaqdan gözlər parıldayır. Pişiklər işıqla ovlayır — yanan əsa onlar üçün fənərdir. Bəlkə Nox?',
     hintLeviosa: 'Qala hər yerdə nəsə atıb gedir — bir yelləmə, bir çırtma ilə havaya qalxar. [6]',
     hintPoints: '(Giriş Zalındakı qum saatları hesabı aparır. Yaxşı işlə daşlar qalxır — fitnə ilə boşalır.)',
+    hintRoom: 'Məşəllərin arasında bir divar sanki nəyisə gözləyir… Elə bil yanından yenidən keçib-keçməyəcəyini fikirləşir.',
+    roomReveal: 'Daş dalğalanır — və heç vaxt orada olmayan bir qapı nəzakətlə peyda olur.',
+    cloakFound: 'Tozun altında: sanki ay işığından toxunmuş bir plaş. Yox olmaq üçün C bas. (Amma unutma — Dementorlar gözlə ovlamır.)',
+    cloakOnCap: 'Gözdən itirsən.',
+    cloakOffCap: 'Plaşı çiynindən atırsan.',
+    door_room: 'Ehtiyac Otağı',
   },
 };
 

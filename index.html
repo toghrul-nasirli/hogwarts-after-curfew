@@ -119,6 +119,15 @@
     box-shadow: 0 4px 22px rgba(201, 165, 69, 0.3);
   }
 
+  #cloakfx {
+    position: absolute; inset: 0; opacity: 0; transition: opacity 0.9s; pointer-events: none;
+    background:
+      radial-gradient(ellipse at center, rgba(0,0,0,0) 52%, rgba(190, 214, 234, 0.16) 100%),
+      linear-gradient(115deg, rgba(190, 214, 234, 0.05), rgba(0,0,0,0) 30%, rgba(0,0,0,0) 70%, rgba(190, 214, 234, 0.05));
+  }
+  #cloakfx.show { opacity: 1; animation: cloakshimmer 5s ease-in-out infinite; }
+  @keyframes cloakshimmer { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.5); } }
+
   #chill {
     position: absolute; inset: 0; opacity: 0; transition: opacity 0.3s;
     background:
@@ -217,6 +226,7 @@
     <div class="slot" data-i="6"><span class="key">0</span><span class="name">Exp. Patronum</span></div>
   </div>
   <div id="map"><canvas id="mapcanvas"></canvas></div>
+  <div id="cloakfx"></div>
   <div id="chill"></div>
   <div id="faint"><span id="fainttext"></span></div>
   <div id="overlay">

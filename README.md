@@ -71,6 +71,13 @@ Filch catches you. Progress saves automatically (add `?reset` to the URL to
 start over — and be sorted again).
 **Nearly Headless Nick** haunts the Great Hall. He minds his own business.
 
+**The Room of Requirement** exists only for those who need it. Somewhere in the
+east corridor there's a stretch of wall that feels… expectant. Walk past it three
+times. Inside, among the hidden things, hangs **the Invisibility Cloak** — press
+`C` to vanish. Mrs. Norris and Filch cannot see you (though a lit wand still
+betrays its glow, and Dementors do not hunt with eyes). The Room, of course,
+appears on no map.
+
 **The Marauder's Map** (`M`) shows the whole castle on live parchment — including
 where *you* are, where Mrs. Norris prowls, where the Dementors drift, and whether
 Filch is coming. "I solemnly swear that I am up to no good."

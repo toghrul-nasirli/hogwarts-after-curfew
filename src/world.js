@@ -28,6 +28,7 @@ class Door {
     this.id = opts.id;
     this.locked = locked;
     this.axis = axis;
+    this.revealed = true; // the Room of Requirement's door starts hidden
     this.openT = 0;
     this.target = 0;
     this.center = new THREE.Vector3(x, baseY + height / 2, z);
@@ -86,7 +87,7 @@ class Door {
       : { minX: x - 0.22, maxX: x + 0.22, minZ: z - halfW, maxZ: z + halfW, minY: baseY, maxY: baseY + height };
   }
 
-  get blocking() { return this.openT < 0.35; }
+  get blocking() { return this.revealed && this.openT < 0.35; }
 
   unlock() {
     if (!this.locked) return false;
@@ -844,7 +845,12 @@ export function buildWorld(scene) {
   box(10, -0.2, -1, 47, 0, 9, mats.floor, { collide: false });
   box(10, 6.6, -1, 47, 7, 9, mats.stoneDark, { collide: false });
   wallX(12, 47, -1, 0, 0, 6.6, mats.stone);   // north
-  wallX(12, 47, 8, 9, 0, 6.6, mats.stone, [{ x1: 38.9, x2: 41.1, h: 3.2 }]); // south (classroom door)
+  // south wall: classroom door + a second hole the Room of Requirement's
+  // filler keeps sealed until the room deigns to exist
+  wallX(12, 47, 8, 9, 0, 6.6, mats.stone, [
+    { x1: 38.9, x2: 41.1, h: 3.2 },
+    { x1: 22.9, x2: 25.1, h: 3.2 },
+  ]);
   wallZ(-1, 22, 46, 47, 0, 6.6, mats.stone);  // east end
 
   // carpet runner
@@ -927,6 +933,69 @@ export function buildWorld(scene) {
   }
   pointLight(40, 4.1, 15, 0xffb168, 12, 18, 0.2);
   torch(34.2, 3, 15, 'e');
+
+  // ═══ THE ROOM OF REQUIREMENT ═════════════════════════════════════════════
+  // Carved from the dead space between the corridor and the facade
+  // (interior x[20,28] z[9,13]). Sealed by a filler wall until revealed.
+  box(19, -0.2, 9, 29, 0, 13, mats.floor, { collide: false });
+  box(19, 4.6, 9, 29, 5, 13, mats.stoneDark, { collide: false });
+  wallZ(9, 13, 19, 20, 0, 4.6, mats.stone);
+  wallZ(9, 13, 28, 29, 0, 4.6, mats.stone);
+  // hidden things: a crate pile, a wounded cabinet, a cracked mirror
+  box(20.4, 0, 12, 21.6, 0.9, 12.9, mats.woodDark);
+  box(20.6, 0.9, 12.2, 21.4, 1.5, 12.8, mats.woodDark, { collide: false });
+  box(26.2, 0, 11.9, 27.4, 2.5, 12.8, mats.woodDark);
+  {
+    const cabDoor = new THREE.BoxGeometry(0.1, 2.2, 0.7);
+    cabDoor.rotateZ(0.09);
+    cabDoor.translate(26.05, 1.1, 12.35);
+    addMerged(cabDoor, mats.doorWood);
+    const mirrorFrame = new THREE.BoxGeometry(1.3, 2.5, 0.08);
+    mirrorFrame.translate(22.6, 1.5, 12.78);
+    addMerged(mirrorFrame, mats.gold);
+    const mirror = new THREE.Mesh(new THREE.PlaneGeometry(1.05, 2.2),
+      new THREE.MeshStandardMaterial({ color: 0x27313f, emissive: 0x44586e, emissiveIntensity: 0.35 }));
+    mirror.position.set(22.6, 1.45, 12.72);
+    mirror.rotation.y = Math.PI;
+    staticG.add(mirror);
+    const c3 = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.42, 0.42), mats.woodDark);
+    c3.position.set(27.2, 0.21, 9.8);
+    liftable(c3, 'crate', 0.21);
+  }
+  candelabra(21, 1.5, 12.5, true); // unlit atop the crates — the room is dark
+  const roomLight = pointLight(24, 3.4, 11, 0x8fa4c8, 4, 12, 0.15);
+  roomLight.on = false;
+
+  // the Invisibility Cloak, draped over a stand
+  let cloakMesh = null;
+  {
+    const pole = new THREE.CylinderGeometry(0.03, 0.04, 1.5, 8);
+    pole.translate(24, 0.75, 11.5);
+    addMerged(pole, mats.woodDark);
+    const arm = new THREE.BoxGeometry(0.7, 0.05, 0.05);
+    arm.translate(24, 1.5, 11.5);
+    addMerged(arm, mats.woodDark);
+    const cloakMat = new THREE.MeshBasicMaterial({
+      color: 0xbfd6ea, transparent: true, opacity: 0.45, side: THREE.DoubleSide,
+    });
+    const pts = [[0.5, 0.02], [0.46, 0.3], [0.36, 0.9], [0.3, 1.35], [0.04, 1.55]]
+      .map(([r, y]) => new THREE.Vector2(r, y));
+    cloakMesh = new THREE.Mesh(new THREE.LatheGeometry(pts, 14), cloakMat);
+    cloakMesh.position.set(24, 0.05, 11.5);
+    staticG.add(cloakMesh);
+    updatables.push((dt2, tt) => {
+      if (!cloakMesh.visible) return;
+      cloakMesh.rotation.y += dt2 * 0.5;
+      cloakMat.opacity = 0.4 + Math.sin(tt * 1.7) * 0.12;
+    });
+  }
+
+  // the filler that pretends to be plain wall
+  const rrFiller = new THREE.Mesh(new THREE.BoxGeometry(2.2, 3.2, 1), mats.stone);
+  rrFiller.position.set(24, 1.6, 8.5);
+  staticG.add(rrFiller);
+  const rrCollider = { minX: 22.9, maxX: 25.1, minY: 0, maxY: 3.2, minZ: 8, maxZ: 9 };
+  colliders.push(rrCollider);
 
   // ═══ DUNGEON STAIRWELL ══════════════════════════════════════════════════
   wallZ(-16, -6, 4, 5, -5.2, 9.6, mats.stoneDark);  // west
@@ -1099,7 +1168,26 @@ export function buildWorld(scene) {
   addDoor({ id: 'hall', name: 'Great Hall Doors', x: -11, z: 4, width: 4, height: 4.4, axis: 'z', double: true, locked: false, swing: -1 });
   addDoor({ id: 'classroom', name: 'Charms Classroom', x: 40, z: 8.5, width: 2.2, height: 3.2, axis: 'x', double: false, locked: true, swing: -1 });
   addDoor({ id: 'potions', name: 'Potions Store', x: -30.5, z: -19.9, width: 2.2, height: 3, axis: 'z', double: false, locked: true, baseY: -5, swing: -1 });
+  const roomDoor = addDoor({ id: 'room', name: 'Room of Requirement', x: 24, z: 8.5, width: 2.2, height: 3.2, axis: 'x', double: false, locked: false, swing: -1 });
+  roomDoor.revealed = false;
+  roomDoor.group.visible = false;
   const doorByName = Object.fromEntries(doors.map((d) => [d.id, d]));
+
+  // walking past the blank wall three times makes the door exist
+  function revealRoom() {
+    if (roomDoor.revealed) return false;
+    roomDoor.revealed = true;
+    roomDoor.group.visible = true;
+    rrFiller.visible = false;
+    const i = colliders.indexOf(rrCollider);
+    if (i >= 0) colliders.splice(i, 1);
+    roomLight.on = true;
+    return true;
+  }
+
+  function takeCloak() {
+    cloakMesh.visible = false;
+  }
 
   // ═══ LIFTABLE PROPS (Wingardium Leviosa) — individual, never merged ══════
   {
@@ -1310,6 +1398,7 @@ export function buildWorld(scene) {
     colliders, doors, doorByName, groundHeight, teleportGround, activeColliders, update, zones, inZone,
     doorsAnimating, ignitables, ignite, extinguish,
     setHouse, setHousePoints, lightLevelAt, dynamicLight, surfaceHeightAt,
+    revealRoom, takeCloak, cloakPos: { x: 24, y: 1, z: 11.5 },
     raycastRoot: [staticG, doorsG, liftG],
     liftables: liftG.children,
     spawn: { x: 0, z: 38, yaw: 0 },
