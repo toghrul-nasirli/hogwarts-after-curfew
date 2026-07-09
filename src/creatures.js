@@ -397,14 +397,15 @@ class MrsNorris {
     g.add(tail);
     scene.add(g);
 
+    // she keeps to the east corridor — away from the gate, so fresh arrivals
+    // get to find their feet before the hunt begins
     this.wps = [
-      [44, 4], [32, 4], [20, 4], [11, 4], [6, 8], [0, 11], [-6, 6],
-      [-8, -2], [0, -4], [6, 0], [11, 4], [24, 4],
+      [14, 4], [22, 3], [30, 5], [38, 3], [44, 4], [38, 5], [30, 3], [22, 5],
     ];
-    this.idx = 2;
-    this.group.position.set(30, 0, 4);
+    this.idx = 3;
+    this.group.position.set(34, 0, 4);
     this.state = 'patrol'; // patrol | alert
-    this.cooldown = 0;
+    this.cooldown = 25; // grace period after the game starts
     this.losTimer = 0;
     this.stuck = 0;
     this.lastX = 30; this.lastZ = 4;
@@ -523,17 +524,11 @@ class Filch {
     this.timer = 0;
   }
 
-  spawn(playerPos) {
+  spawn() {
     this.active = true;
     this.timer = 0;
-    // emerges from whichever entrance is nearer the trespasser
-    const spots = [[44, 4], [0, 11.5]];
-    let best = spots[0], bd = Infinity;
-    for (const s of spots) {
-      const d = Math.hypot(s[0] - playerPos.x, s[1] - playerPos.z);
-      if (d < bd) { bd = d; best = s; }
-    }
-    this.group.position.set(best[0], 0, best[1]);
+    // always shuffles in from the caretaker's office at the corridor's far end
+    this.group.position.set(44, 0, 4);
     this.group.visible = true;
     this.lantern.on = true;
   }
@@ -613,7 +608,7 @@ export class Creatures {
   update(dt, t, player, lumosOn = false) {
     this.ghost.update(dt, t);
     this.norris.update(dt, t, player, lumosOn, () => {
-      this.filch.spawn(player.pos);
+      this.filch.spawn();
       if (this.onSpotted) this.onSpotted();
     });
     this.filch.update(dt, t, player, this.catchEnabled,
