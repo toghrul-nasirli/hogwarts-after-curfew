@@ -1,0 +1,344 @@
+// The wand, the four spells, sparkle effects, and door interaction.
+import * as THREE from 'three';
+
+class SparklePool {
+  constructor(scene, tex, color, n = 240) {
+    this.N = n;
+    this.pos = new Float32Array(n * 3).fill(-999);
+    this.vel = new Float32Array(n * 3);
+    this.life = new Float32Array(n);
+    this.head = 0;
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(this.pos, 3));
+    this.points = new THREE.Points(geo, new THREE.PointsMaterial({
+      color, size: 0.14, map: tex, transparent: true,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    }));
+    this.points.frustumCulled = false;
+    scene.add(this.points);
+  }
+
+  burst(center, n = 36, speed = 2.2, lifeBase = 0.7) {
+    for (let s = 0; s < n; s++) {
+      const i = this.head = (this.head + 1) % this.N;
+      const th = Math.random() * Math.PI * 2, ph = Math.acos(Math.random() * 2 - 1);
+      const sp = speed * (0.4 + Math.random() * 0.6);
+      this.pos[i * 3] = center.x;
+      this.pos[i * 3 + 1] = center.y;
+      this.pos[i * 3 + 2] = center.z;
+      this.vel[i * 3] = Math.sin(ph) * Math.cos(th) * sp;
+      this.vel[i * 3 + 1] = Math.cos(ph) * sp * 0.8;
+      this.vel[i * 3 + 2] = Math.sin(ph) * Math.sin(th) * sp;
+      this.life[i] = lifeBase * (0.5 + Math.random() * 0.8);
+    }
+  }
+
+  update(dt) {
+    for (let i = 0; i < this.N; i++) {
+      if (this.life[i] > 0) {
+        this.life[i] -= dt;
+        this.vel[i * 3 + 1] -= 2.2 * dt; // gentle gravity
+        this.pos[i * 3] += this.vel[i * 3] * dt;
+        this.pos[i * 3 + 1] += this.vel[i * 3 + 1] * dt;
+        this.pos[i * 3 + 2] += this.vel[i * 3 + 2] * dt;
+        if (this.life[i] <= 0) this.pos[i * 3 + 1] = -999;
+      }
+    }
+    this.points.geometry.attributes.position.needsUpdate = true;
+  }
+}
+
+export const SPELL_NAMES = ['Lumos', 'Nox', 'Alohomora', 'Incendio', 'Aguamenti', 'Expecto Patronum'];
+
+export class SpellSystem {
+  constructor(scene, camera, player, world, creatures, ui, audio) {
+    this.camera = camera;
+    this.player = player;
+    this.world = world;
+    this.creatures = creatures;
+    this.ui = ui;
+    this.audio = audio;
+    this.selected = 0;
+    this.lumosOn = false;
+    this.patronusCooldown = 0;
+    this.castAnim = 0;
+    this.onUnlock = null; // (door) => {}
+
+    // wand view-model
+    this.wandRoot = new THREE.Group();
+    this.wandRoot.position.set(0.34, -0.28, -0.35);
+    const wand = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.011, 0.02, 0.56, 8),
+      new THREE.MeshStandardMaterial({ color: 0x3a2417, roughness: 0.7 })
+    );
+    wand.rotation.x = -Math.PI / 2 + 0.12;
+    wand.position.set(0, 0, -0.22);
+    this.wandRoot.add(wand);
+    const grip = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.023, 0.026, 0.14, 8),
+      new THREE.MeshStandardMaterial({ color: 0x241209, roughness: 0.9 })
+    );
+    grip.rotation.x = -Math.PI / 2 + 0.12;
+    grip.position.set(0, -0.025, 0.02);
+    this.wandRoot.add(grip);
+    this.wandTip = new THREE.Object3D();
+    this.wandTip.position.set(0, 0.035, -0.5);
+    this.wandRoot.add(this.wandTip);
+    camera.add(this.wandRoot);
+    scene.add(camera);
+
+    // lumos light + glow
+    this.lumosLight = new THREE.PointLight(0xd8e8ff, 0, 24, 2);
+    this.wandTip.add(this.lumosLight);
+    this.lumosGlow = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: world.coldGlowTex, color: 0xdceeff, transparent: true, opacity: 0,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    }));
+    this.lumosGlow.scale.set(0.32, 0.32, 1);
+    this.wandTip.add(this.lumosGlow);
+
+    this.goldSparks = new SparklePool(scene, world.glowTex, 0xffd980);
+    this.coldSparks = new SparklePool(scene, world.coldGlowTex, 0xaee0ff);
+
+    this.ray = new THREE.Raycaster();
+    this.ray.far = 8;
+
+    document.addEventListener('keydown', (e) => {
+      if (e.code.startsWith('Digit')) {
+        const n = parseInt(e.code.slice(5), 10);
+        if (n >= 1 && n <= 5) this.select(n - 1);
+        else if (n === 0) this.select(5); // Expecto Patronum lives on 0
+      }
+      if (e.code === 'KeyE') this.tryInteract();
+    });
+    document.addEventListener('mousedown', (e) => {
+      if (e.button !== 0 || !this.player.enabled) return;
+      if (!this.player.debug && document.pointerLockElement !== this.player.canvas) return;
+      this.cast();
+    });
+    ui.setSpell(0);
+  }
+
+  select(i) {
+    this.selected = i;
+    this.ui.setSpell(i);
+  }
+
+  _flick() {
+    this.castAnim = 1;
+    this.audio.whoosh();
+  }
+
+  _aimHit() {
+    this.ray.setFromCamera({ x: 0, y: 0 }, this.camera);
+    const hits = this.ray.intersectObjects(this.world.raycastRoot, true);
+    return hits.length ? hits[0] : null;
+  }
+
+  // nearest ignitable roughly along the aim ray (walls block it)
+  _findIgnitable(hit) {
+    const origin = this.camera.getWorldPosition(new THREE.Vector3());
+    const dir = this.camera.getWorldDirection(new THREE.Vector3());
+    let best = null, bestD = Infinity;
+    for (const ig of this.world.ignitables) {
+      const to = new THREE.Vector3(ig.x - origin.x, ig.y - origin.y, ig.z - origin.z);
+      const dist = to.length();
+      if (dist > 11) continue;
+      const along = to.dot(dir);
+      if (along < 0.5) continue;
+      const perp = Math.sqrt(Math.max(0, dist * dist - along * along));
+      if (perp > 1.7) continue;
+      if (hit && hit.distance + 0.8 < along) continue; // a wall is in the way
+      if (dist < bestD) { best = ig; bestD = dist; }
+    }
+    return best;
+  }
+
+  cast(nameOverride = null) {
+    const spell = nameOverride !== null ? nameOverride : this.selected;
+    switch (spell) {
+      case 0: { // Lumos
+        this._flick();
+        if (this.lumosOn) {
+          this.ui.caption('Your wand is already alight.');
+          break;
+        }
+        this.lumosOn = true;
+        this.ui.setLumos(true);
+        this.audio.lumos();
+        this.coldSparks.burst(this.wandTip.getWorldPosition(new THREE.Vector3()), 24, 1.4, 0.5);
+        this.ui.caption('Lumos! A cold, steady light blooms at your wand-tip.');
+        break;
+      }
+      case 1: { // Nox
+        this._flick();
+        if (!this.lumosOn) {
+          this.ui.caption('Your wand is already dark.');
+          break;
+        }
+        this.lumosOn = false;
+        this.ui.setLumos(false);
+        this.audio.nox();
+        this.ui.caption('Nox. The light dies.');
+        break;
+      }
+      case 2: { // Alohomora
+        this._flick();
+        const hit = this._aimHit();
+        const door = hit ? this._doorOf(hit.object) : null;
+        if (door && door.locked) {
+          door.unlock();
+          this.audio.unlock();
+          this.goldSparks.burst(hit.point, 64, 2.6, 0.9);
+          this.ui.caption(`Alohomora! The ${door.name} clicks open.`);
+          if (this.onUnlock) this.onUnlock(door);
+        } else if (door) {
+          this.ui.caption(`The ${door.name} is already unlocked — press E to open it.`);
+        } else {
+          const p = this.camera.getWorldPosition(new THREE.Vector3())
+            .add(this.camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(3.5));
+          this.goldSparks.burst(p, 10, 1.2, 0.4);
+          this.audio.sparkle();
+          this.ui.caption('The charm fizzles — nothing to unlock there.');
+        }
+        break;
+      }
+      case 5: { // Expecto Patronum (key 0)
+        if (this.patronusCooldown > 0) {
+          this.ui.caption('You need a moment to gather a happy memory…');
+          break;
+        }
+        this._flick();
+        this.patronusCooldown = 6;
+        this.audio.patronus();
+        const origin = this.camera.getWorldPosition(new THREE.Vector3());
+        origin.y = this.player.pos.y + 1.2;
+        const dir = this.camera.getWorldDirection(new THREE.Vector3());
+        this.creatures.castPatronus(origin, dir);
+        this.coldSparks.burst(this.wandTip.getWorldPosition(new THREE.Vector3()), 60, 3, 0.8);
+        this.ui.caption('EXPECTO PATRONUM! A silver stag erupts from your wand!');
+        break;
+      }
+      case 3: { // Incendio — lights the sconce/candelabra you aim at
+        this._flick();
+        const hit = this._aimHit();
+        const best = this._findIgnitable(hit);
+        if (best && !best.lit) {
+          this.world.ignite(best);
+          this.audio.incendio();
+          this.goldSparks.burst(new THREE.Vector3(best.x, best.y, best.z), 42, 1.9, 0.8);
+          this.ui.caption('Incendio! Flames leap to life.');
+        } else if (best && best.lit) {
+          this.ui.caption('That flame is already burning merrily.');
+        } else if (hit) {
+          this.goldSparks.burst(hit.point, 14, 1.4, 0.5);
+          this.audio.sparkle();
+          this.ui.caption('The spell scorches bare stone. Aim at unlit candles or torch sconces.');
+        } else {
+          const p = this.camera.getWorldPosition(new THREE.Vector3())
+            .add(this.camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(4));
+          this.goldSparks.burst(p, 12, 1.2, 0.4);
+          this.audio.sparkle();
+          this.ui.caption('A lick of flame curls into the dark and dies.');
+        }
+        break;
+      }
+      case 4: { // Aguamenti — a jet of water puts flames out
+        this._flick();
+        const hit = this._aimHit();
+        const best = this._findIgnitable(hit);
+        if (best && best.lit) {
+          this.world.extinguish(best);
+          this.audio.aguamenti();
+          this.coldSparks.burst(new THREE.Vector3(best.x, best.y, best.z), 46, 2.2, 0.7);
+          this.ui.caption('Aguamenti! The flames hiss out in a puff of steam.');
+        } else if (best && !best.lit) {
+          this.ui.caption('Nothing is burning there.');
+        } else {
+          const p = hit ? hit.point
+            : this.camera.getWorldPosition(new THREE.Vector3())
+              .add(this.camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(4));
+          this.coldSparks.burst(p, 20, 1.8, 0.5);
+          this.audio.aguamenti();
+          this.ui.caption('A jet of water splashes over the stone.');
+        }
+        break;
+      }
+    }
+  }
+
+  _doorOf(obj) {
+    let o = obj;
+    while (o) {
+      if (o.userData && o.userData.door) return o.userData.door;
+      o = o.parent;
+    }
+    return null;
+  }
+
+  _nearestDoor() {
+    const p = this.player.position;
+    const fwd = this.player.forward();
+    let best = null, bestD = 3.6;
+    for (const d of this.world.doors) {
+      const dx = d.center.x - p.x, dz = d.center.z - p.z;
+      const dist = Math.hypot(dx, dz);
+      if (dist > bestD) continue;
+      if (Math.abs(d.center.y - p.y) > 4) continue;
+      const dot = (dx * fwd.x + dz * fwd.z) / (dist || 1);
+      if (dot < 0.25 && dist > 1.2) continue;
+      best = d; bestD = dist;
+    }
+    return best;
+  }
+
+  tryInteract() {
+    if (!this.player.enabled) return;
+    const door = this._nearestDoor();
+    if (!door) return;
+    const result = door.interact();
+    if (result === 'locked') {
+      this.audio.locked();
+      this.ui.caption(`The ${door.name} won't budge. Perhaps a charm would help… [3]`);
+    } else {
+      this.audio.creak();
+    }
+  }
+
+  update(dt, t) {
+    if (this.patronusCooldown > 0) this.patronusCooldown -= dt;
+
+    // wand sway + cast flick
+    if (this.castAnim > 0) this.castAnim = Math.max(0, this.castAnim - dt * 3.2);
+    const flick = Math.sin(this.castAnim * Math.PI) * 0.5;
+    const sway = this.player.moving ? Math.sin(this.player.moveT * 0.5) * 0.012 : 0;
+    this.wandRoot.position.set(0.34 + sway, -0.28 + Math.sin(t * 1.3) * 0.006, -0.35);
+    this.wandRoot.rotation.x = -flick * 0.7;
+    this.wandRoot.rotation.z = flick * 0.15;
+
+    // lumos glow
+    const targetI = this.lumosOn ? 26 : 0;
+    this.lumosLight.intensity += (targetI - this.lumosLight.intensity) * Math.min(1, 8 * dt);
+    if (this.lumosOn) {
+      this.lumosLight.intensity *= 0.97 + Math.sin(t * 9.7) * 0.03;
+      this.lumosGlow.material.opacity = 0.85 + Math.sin(t * 7.3) * 0.1;
+    } else {
+      this.lumosGlow.material.opacity = Math.max(0, this.lumosGlow.material.opacity - dt * 3);
+    }
+
+    this.goldSparks.update(dt);
+    this.coldSparks.update(dt);
+
+    // door prompt
+    const door = this._nearestDoor();
+    if (door) {
+      if (door.locked) {
+        this.ui.prompt(`${door.name} — <i>locked</i>. Try <b>Alohomora</b> [3]`);
+      } else {
+        this.ui.prompt(`<span class="key">E</span> ${door.target > 0.5 ? 'Close' : 'Open'} ${door.name}`);
+      }
+    } else {
+      this.ui.prompt(null);
+    }
+  }
+}
