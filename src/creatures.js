@@ -345,7 +345,8 @@ class Ghost {
     g.add(head);
     scene.add(g);
     this.wps = [[-40, -8], [-16, -8], [-15, 3], [-28, 6], [-40, 3]];
-    this.idx = 0;
+    this.idx = 1;
+    g.position.set(-40, 1, -8); // begins his rounds inside the Great Hall
     this.phase = Math.random() * 9;
   }
 

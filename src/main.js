@@ -6,6 +6,7 @@ import { SpellSystem } from './spells.js';
 import { Creatures } from './creatures.js';
 import { UI } from './ui.js';
 import { AudioFX } from './audio.js';
+import { MaraudersMap } from './map.js';
 
 window.__errors = [];
 window.__THREE = THREE;
@@ -357,6 +358,33 @@ document.addEventListener('keydown', (e) => {
   if (e.code === 'KeyP') wantFrameCapture = true;
 });
 
+// ── the Marauder's Map (M) ───────────────────────────────────────────────────
+const map = new MaraudersMap();
+document.addEventListener('keydown', (e) => {
+  if (e.code !== 'KeyM' || !started) return;
+  map.toggle();
+  audio.rustle();
+  ui.caption(map.open ? '“I solemnly swear that I am up to no good.”' : '“Mischief managed.”', 2600);
+});
+
+function mapActors() {
+  const list = [{
+    x: player.pos.x, z: player.pos.z, yaw: player.yaw,
+    label: 'You', color: HOUSES[houseIdx === null ? 0 : houseIdx].color, player: true,
+  }];
+  list.push({ x: creatures.norris.x, z: creatures.norris.z, label: 'Mrs. Norris', color: '#6a5b4a' });
+  if (creatures.filch.active) {
+    const f = creatures.filch.group.position;
+    list.push({ x: f.x, z: f.z, label: 'Argus Filch', color: '#4a3319' });
+  }
+  const g = creatures.ghost.group.position;
+  list.push({ x: g.x, z: g.z, label: 'Sir Nicholas', color: '#7a92b8' });
+  for (const d of creatures.dementors) {
+    if (d.active) list.push({ x: d.x, z: d.z, label: 'Dementor', color: '#26262e' });
+  }
+  return list;
+}
+
 const timer = new THREE.Timer();
 let acc = 0;
 let shadowWarmup = 3;
@@ -419,6 +447,8 @@ function frame() {
   }
   saveT += dt;
   if (saveT > 5) { saveT = 0; persist(); }
+
+  if (map.open) map.draw(mapActors());
 
   ui.chill(creatures.chill);
   audio.dementor(creatures.chill);

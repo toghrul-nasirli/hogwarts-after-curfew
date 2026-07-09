@@ -407,6 +407,23 @@ export class AudioFX {
     });
   }
 
+  rustle() {
+    if (!this.ok) return;
+    const t = this.ctx.currentTime;
+    const src = this.ctx.createBufferSource();
+    src.buffer = this._noise(0.3);
+    const bp = this.ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.Q.value = 0.8;
+    bp.frequency.setValueAtTime(2400, t);
+    bp.frequency.exponentialRampToValueAtTime(900, t + 0.22);
+    const g = this.ctx.createGain();
+    this._env(g, t, 0.02, 0.09, 0.24);
+    src.connect(bp).connect(g).connect(this.master);
+    src.start(t);
+    src.stop(t + 0.3);
+  }
+
   thud() {
     if (!this.ok) return;
     const t = this.ctx.currentTime;

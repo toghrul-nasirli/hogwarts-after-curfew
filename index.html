@@ -87,6 +87,18 @@
   #points.gain .val { color: #7fe08a; }
   #points.loss .val { color: #ff7a6b; }
 
+  #map {
+    position: absolute; inset: 0; display: none; z-index: 4;
+    align-items: center; justify-content: center;
+    background: rgba(4, 5, 12, 0.45);
+  }
+  #map.show { display: flex; }
+  #map canvas {
+    border-radius: 3px;
+    box-shadow: 0 12px 60px rgba(0, 0, 0, 0.75);
+    transform: rotate(-0.6deg);
+  }
+
   #chill {
     position: absolute; inset: 0; opacity: 0; transition: opacity 0.3s;
     background:
@@ -184,6 +196,7 @@
     <div class="slot" data-i="5"><span class="key">6</span><span class="name">Wing. Leviosa</span></div>
     <div class="slot" data-i="6"><span class="key">0</span><span class="name">Exp. Patronum</span></div>
   </div>
+  <div id="map"><canvas id="mapcanvas"></canvas></div>
   <div id="chill"></div>
   <div id="faint"><span id="fainttext"></span></div>
   <div id="overlay">
@@ -195,7 +208,7 @@
       &nbsp;·&nbsp; <span class="key">Shift</span> run &nbsp;·&nbsp; <span class="key">Space</span> jump
       &nbsp;·&nbsp; mouse to look<br/>
       <span class="key">1</span>–<span class="key">6</span> and <span class="key">0</span> choose a spell &nbsp;·&nbsp;
-      <span class="key">Click</span> cast &nbsp;·&nbsp; <span class="key">E</span> open doors
+      <span class="key">Click</span> cast &nbsp;·&nbsp; <span class="key">E</span> open doors &nbsp;·&nbsp; <span class="key">M</span> the Map
     </div>
     <div class="enter">Click to sneak in</div>
     <div class="fine">A fan-made tribute for private fun. Best played in Chrome with sound on.</div>

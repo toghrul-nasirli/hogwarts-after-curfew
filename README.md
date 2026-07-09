@@ -38,6 +38,7 @@ load JS modules from plain files; use the standalone build for that.)
 | `1`–`5`, `0` | Select spell |
 | Left click | Cast the selected spell |
 | `E` | Open / close doors |
+| `M` | The Marauder's Map |
 | `Esc` | Pause (click to resume) |
 
 ### The six spells
@@ -69,6 +70,10 @@ Entrance Hall) go up as you complete objectives and light sconces, and down when
 Filch catches you. Progress saves automatically (add `?reset` to the URL to
 start over — and be sorted again).
 **Nearly Headless Nick** haunts the Great Hall. He minds his own business.
+
+**The Marauder's Map** (`M`) shows the whole castle on live parchment — including
+where *you* are, where Mrs. Norris prowls, where the Dementors drift, and whether
+Filch is coming. "I solemnly swear that I am up to no good."
 
 The objective panel (top-left) walks you through all four. After that, the castle is yours:
 the Great Hall with its floating candles and enchanted ceiling, the Grand Staircase with its
