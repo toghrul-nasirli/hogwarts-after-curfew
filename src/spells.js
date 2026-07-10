@@ -347,7 +347,13 @@ export class SpellSystem {
 
   _dropHeld() {
     if (!this.held) return;
-    this.dropping.push({ mesh: this.held, vy: 0 });
+    const m = this.held;
+    const restH = m.userData.restH || 0.15;
+    // if the carry somehow ended inside a solid, pop it onto that solid's top
+    // before the fall — otherwise it tunnels through and rests hidden inside
+    const top = this.world.surfaceHeightAt(m.position.x, m.position.z, m.position.y - restH + 0.45);
+    if (m.position.y - restH < top) m.position.y = top + restH;
+    this.dropping.push({ mesh: m, vy: 0 });
     this.held = null;
   }
 
@@ -364,9 +370,15 @@ export class SpellSystem {
         dist = Math.min(dist, Math.max(0.6, h.distance - 0.35));
         break;
       }
-      const target = this.camera.getWorldPosition(new THREE.Vector3())
+      const camPos = this.camera.getWorldPosition(new THREE.Vector3());
+      const target = camPos.clone()
         .add(this.camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(dist));
       target.y += Math.sin(time * 2.2) * 0.06;
+      // ride along whatever lies beneath — steep looks can't push the object
+      // down into a plinth, a tabletop, or the floor
+      const heldRest = this.held.userData.restH || 0.15;
+      const under = this.world.surfaceHeightAt(target.x, target.z, camPos.y);
+      if (target.y - heldRest < under) target.y = under + heldRest;
       this.held.position.lerp(target, 1 - Math.exp(-8 * dt));
       this.held.rotation.y += dt * 0.9;
     }
