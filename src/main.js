@@ -252,7 +252,7 @@ function pollRiddle(dt) {
   const p = world.riddle.pedestal;
   for (const b of world.riddle.bottles) {
     if (spells.held === b) continue;
-    if (Math.abs(b.position.x - p.x) > 0.5 || Math.abs(b.position.z - p.z) > 0.5) continue;
+    if (Math.abs(b.position.x - p.x) > 0.6 || Math.abs(b.position.z - p.z) > 0.6) continue;
     if (Math.abs(b.position.y - b.userData.restH - p.y) > 0.3) continue; // must be resting on it
     const i = b.userData.riddleIdx;
     if (i === world.riddle.answer) {

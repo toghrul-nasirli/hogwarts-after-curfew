@@ -1561,14 +1561,18 @@ export function buildWorld(scene) {
   // Highest thing at (x,z) that an object falling from fromY can rest on:
   // floors/ramps, collider tops (tables, pedestals, crates), and shelf ledges.
   function surfaceHeightAt(x, z, fromY) {
+    // M: footprints grow by roughly an object's radius, so a drop that mostly
+    // overlaps a table or plinth rests on its edge instead of sinking through
+    // the side face
+    const M = 0.16;
     let best = groundHeight(x, z, fromY);
     for (const b of colliders) {
-      if (x >= b.minX && x <= b.maxX && z >= b.minZ && z <= b.maxZ) {
+      if (x >= b.minX - M && x <= b.maxX + M && z >= b.minZ - M && z <= b.maxZ + M) {
         if (b.maxY <= fromY + 0.01 && b.maxY > best) best = b.maxY;
       }
     }
     for (const s of surfaces) {
-      if (x >= s.minX && x <= s.maxX && z >= s.minZ && z <= s.maxZ) {
+      if (x >= s.minX - M && x <= s.maxX + M && z >= s.minZ - M && z <= s.maxZ + M) {
         if (s.y <= fromY + 0.01 && s.y > best) best = s.y;
       }
     }

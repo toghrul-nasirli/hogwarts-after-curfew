@@ -354,10 +354,18 @@ export class SpellSystem {
   update(dt, time) {
     if (this.patronusCooldown > 0) this.patronusCooldown -= dt;
 
-    // Wingardium Leviosa: carried object floats ahead of the wand
+    // Wingardium Leviosa: carried object floats close ahead of the wand,
+    // pulling in even closer rather than pushing through whatever you face
     if (this.held) {
+      let dist = 1.5;
+      this.ray.setFromCamera({ x: 0, y: 0 }, this.camera);
+      for (const h of this.ray.intersectObjects(this.world.raycastRoot, true)) {
+        if (h.object === this.held) continue;
+        dist = Math.min(dist, Math.max(0.6, h.distance - 0.35));
+        break;
+      }
       const target = this.camera.getWorldPosition(new THREE.Vector3())
-        .add(this.camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(2.3));
+        .add(this.camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(dist));
       target.y += Math.sin(time * 2.2) * 0.06;
       this.held.position.lerp(target, 1 - Math.exp(-8 * dt));
       this.held.rotation.y += dt * 0.9;
