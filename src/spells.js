@@ -228,7 +228,14 @@ export class SpellSystem {
             : t('leviosaJoke'));
           this._leviosaJoked = true;
         } else {
-          this.ui.caption(t('leviosaNothing'));
+          // the diadem refuses the charm — it wants to be fetched, not summoned
+          const d = this.world.diademPos;
+          if (hit && d && this.world.diademVisible() &&
+              Math.hypot(hit.point.x - d.x, hit.point.y - d.y, hit.point.z - d.z) < 1.0) {
+            this.ui.caption(t('diademStuck'), 6400);
+          } else {
+            this.ui.caption(t('leviosaNothing'));
+          }
         }
         break;
       }

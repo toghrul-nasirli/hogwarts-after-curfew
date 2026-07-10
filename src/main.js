@@ -486,6 +486,15 @@ window.__game = {
     for (const d of world.doors) { d.locked = false; d.target = 1; }
   },
   noCatch(v) { creatures.catchEnabled = !v; },
+  aim() {
+    const h = spells._aimHit();
+    return h ? {
+      d: +h.distance.toFixed(2),
+      p: h.point.toArray().map((v) => +v.toFixed(2)),
+      geo: h.object.geometry && h.object.geometry.type,
+      name: h.object.userData.name || null,
+    } : null;
+  },
   cloak(v) {
     if (v && !hasCloak) { hasCloak = true; world.takeCloak(); }
     setCloak(v);

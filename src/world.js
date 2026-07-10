@@ -955,7 +955,7 @@ export function buildWorld(scene) {
     cabDoor.translate(21.28, 1.1, 10.9);
     addMerged(cabDoor, mats.doorWood);
     const c3 = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.42, 0.42), mats.woodDark);
-    c3.position.set(23.8, 0.21, 12.5);
+    c3.position.set(22.8, 0.21, 12.3);
     liftable(c3, 'crate', 0.21);
   }
 
@@ -1129,10 +1129,10 @@ export function buildWorld(scene) {
   let cloakMesh = null;
   {
     const pole = new THREE.CylinderGeometry(0.03, 0.04, 1.5, 8);
-    pole.translate(24, 0.75, 11.5);
+    pole.translate(23.4, 0.75, 11.5);
     addMerged(pole, mats.woodDark);
     const arm = new THREE.BoxGeometry(0.7, 0.05, 0.05);
-    arm.translate(24, 1.5, 11.5);
+    arm.translate(23.4, 1.5, 11.5);
     addMerged(arm, mats.woodDark);
     const cloakMat = new THREE.MeshBasicMaterial({
       color: 0xbfd6ea, transparent: true, opacity: 0.45, side: THREE.DoubleSide,
@@ -1140,7 +1140,7 @@ export function buildWorld(scene) {
     const pts = [[0.5, 0.02], [0.46, 0.3], [0.36, 0.9], [0.3, 1.35], [0.04, 1.55]]
       .map(([r, y]) => new THREE.Vector2(r, y));
     cloakMesh = new THREE.Mesh(new THREE.LatheGeometry(pts, 14), cloakMat);
-    cloakMesh.position.set(24, 0.05, 11.5);
+    cloakMesh.position.set(23.4, 0.05, 11.5);
     staticG.add(cloakMesh);
     updatables.push((dt2, tt) => {
       if (!cloakMesh.visible) return;
@@ -1654,10 +1654,13 @@ export function buildWorld(scene) {
     colliders, doors, doorByName, groundHeight, teleportGround, activeColliders, update, zones, inZone,
     doorsAnimating, ignitables, ignite, extinguish,
     setHouse, setHousePoints, lightLevelAt, dynamicLight, surfaceHeightAt,
-    revealRoom, takeCloak, cloakPos: { x: 24, y: 1, z: 11.5 },
+    // west of x≈23.6 the astronomy tower's shell slices through the room —
+    // everything interactive lives on the walkable side of it
+    revealRoom, takeCloak, cloakPos: { x: 23.4, y: 1, z: 11.5 },
     riddle: { bottles: riddleBottles, pedestal: { x: -36.5, y: -3.95, z: -18.2 }, answer: 3 },
     setRiddleText, solveRiddle,
     takeDiadem, diademPos: { x: 20.75, y: 2.9, z: 10.9 },
+    diademVisible: () => diademG.visible,
     raycastRoot: [staticG, doorsG, liftG],
     liftables: liftG.children,
     spawn: { x: 0, z: 38, yaw: 0 },
