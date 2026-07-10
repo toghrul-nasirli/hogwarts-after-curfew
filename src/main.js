@@ -230,7 +230,7 @@ function pollRoomOfRequirement() {
   }
   // the Mirror of Erised, for whoever lingers before it
   if (world.doorByName.room.revealed && Math.abs(player.pos.y) < 1.5 &&
-      Math.abs(player.pos.x - 22.6) < 1.4 && player.pos.z > 10.1 && player.pos.z < 12.6) {
+      Math.abs(player.pos.x - 22.6) < 1.6 && player.pos.z > 10.1 && player.pos.z < 12.6) {
     hintOnce('hintErised');
   }
 }

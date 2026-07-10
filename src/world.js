@@ -960,19 +960,20 @@ export function buildWorld(scene) {
   // the Mirror of Erised: gold arch on clawed feet, an inscription nobody
   // reads forwards, and glass that shows what the heart wants — not the room
   {
-    const mirrorFrame = new THREE.BoxGeometry(1.3, 2.5, 0.08);
+    // glass is 2:3 — the exact shape of the photograph it shows, unstretched
+    const mirrorFrame = new THREE.BoxGeometry(1.76, 2.6, 0.08);
     mirrorFrame.translate(22.6, 1.5, 12.78);
     addMerged(mirrorFrame, mats.gold);
-    const lintel = new THREE.BoxGeometry(1.3, 0.3, 0.08);
-    lintel.translate(22.6, 2.9, 12.78);
+    const lintel = new THREE.BoxGeometry(1.76, 0.3, 0.08);
+    lintel.translate(22.6, 2.95, 12.78);
     addMerged(lintel, mats.gold);
-    const arch = new THREE.TorusGeometry(0.65, 0.07, 8, 20, Math.PI);
-    arch.translate(22.6, 3.05, 12.78);
+    const arch = new THREE.TorusGeometry(0.88, 0.07, 8, 20, Math.PI);
+    arch.translate(22.6, 3.1, 12.78);
     addMerged(arch, mats.gold);
     const finial = new THREE.ConeGeometry(0.07, 0.18, 8);
-    finial.translate(22.6, 3.78, 12.78);
+    finial.translate(22.6, 4.06, 12.78);
     addMerged(finial, mats.gold);
-    for (const fx of [22.12, 23.08]) { // clawed feet
+    for (const fx of [21.95, 23.25]) { // clawed feet
       const foot = new THREE.BoxGeometry(0.2, 0.25, 0.34);
       foot.translate(fx, 0.125, 12.72);
       addMerged(foot, mats.gold);
@@ -980,12 +981,12 @@ export function buildWorld(scene) {
       claw.translate(fx, 0.05, 12.53);
       addMerged(claw, mats.gold);
     }
-    const inscription = new THREE.Mesh(new THREE.PlaneGeometry(1.26, 0.26),
+    const inscription = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 0.26),
       new THREE.MeshBasicMaterial({ map: erisedInscriptionTexture(), transparent: true, ...DECAL }));
-    inscription.position.set(22.6, 2.9, 12.735);
+    inscription.position.set(22.6, 2.95, 12.735);
     inscription.rotation.y = Math.PI;
     staticG.add(inscription);
-    const mirror = new THREE.Mesh(new THREE.PlaneGeometry(1.05, 2.2),
+    const mirror = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 2.25),
       new THREE.MeshStandardMaterial({ color: 0x27313f, emissive: 0x44586e, emissiveIntensity: 0.35 }));
     mirror.position.set(22.6, 1.45, 12.72);
     mirror.rotation.y = Math.PI;
@@ -994,15 +995,15 @@ export function buildWorld(scene) {
     const visionMat = new THREE.MeshBasicMaterial({
       map: erisedVisionTexture(), transparent: true, opacity: 0, depthWrite: false,
     });
-    const vision = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 2.1), visionMat);
+    const vision = new THREE.Mesh(new THREE.PlaneGeometry(1.44, 2.16), visionMat);
     vision.position.set(22.6, 1.45, 12.7);
     vision.rotation.y = Math.PI;
     staticG.add(vision);
     let visBase = 0;
     updatables.push((dt2, tt, p) => {
-      const near = p && Math.abs(p.x - 22.6) < 1.4 && p.z > 10.1 && p.z < 12.6 && Math.abs(p.y) < 1.5;
-      visBase += ((near ? 0.8 : 0) - visBase) * Math.min(1, dt2 * 2);
-      visionMat.opacity = visBase * (0.93 + Math.sin(tt * 1.4) * 0.07);
+      const near = p && Math.abs(p.x - 22.6) < 1.6 && p.z > 10.1 && p.z < 12.6 && Math.abs(p.y) < 1.5;
+      visBase += ((near ? 0.85 : 0) - visBase) * Math.min(1, dt2 * 2);
+      visionMat.opacity = visBase * (0.95 + Math.sin(tt * 1.4) * 0.05);
     });
   }
 
