@@ -235,6 +235,92 @@ function pollRoomOfRequirement() {
   }
 }
 
+// ── Snape's bottle riddle (Potions Store) ────────────────────────────────────
+let riddleSolved = false;
+let riddleDrawn = false;
+let riddleCooldown = 0;
+function pollRiddle(dt) {
+  riddleCooldown = Math.max(0, riddleCooldown - dt);
+  if (player.pos.y > -2.5 || !world.inZone(world.zones.potions, player.pos.x, player.pos.z)) return;
+  if (!riddleDrawn) {
+    // the verse is chalked in whatever language the reader thinks in
+    riddleDrawn = true;
+    world.setRiddleText(t('riddleTitle'), t('riddleBody').split('\n'));
+    hintOnce('hintRiddle');
+  }
+  if (riddleSolved) return;
+  const p = world.riddle.pedestal;
+  for (const b of world.riddle.bottles) {
+    if (spells.held === b) continue;
+    if (Math.abs(b.position.x - p.x) > 0.5 || Math.abs(b.position.z - p.z) > 0.5) continue;
+    if (Math.abs(b.position.y - b.userData.restH - p.y) > 0.3) continue; // must be resting on it
+    const i = b.userData.riddleIdx;
+    if (i === world.riddle.answer) {
+      riddleSolved = true;
+      world.solveRiddle();
+      spells.goldSparks.burst(new THREE.Vector3(p.x, p.y + 0.9, p.z), 90, 2.2, 1.1);
+      audio.chime();
+      ui.caption(t('riddleSolved'), 7000);
+      addPoints(30);
+      persist();
+    } else if (riddleCooldown === 0) {
+      riddleCooldown = 3;
+      const kind = 'PWPFPWB'[i];
+      b.position.set(...b.userData.home); // the bottle hops back into the line
+      audio.rustle();
+      if (kind === 'W') {
+        ui.caption(t('riddleWine'), 5600);
+      } else if (kind === 'B') {
+        ui.caption(t('riddleBack'), 5600);
+        // back to the store's own doorway — not out among the dementors
+        player.teleport(-32.2, -19.9, Math.PI / 2, 0);
+      } else {
+        ui.caption(t('riddlePoison'), 5600);
+        addPoints(-10);
+      }
+    }
+    break;
+  }
+}
+
+// ── the Grey Lady and the lost diadem ────────────────────────────────────────
+let ladyStage = 0; // 0 unmet · 1 asked · 2 carrying the diadem · 3 returned
+let ladyCooldown = 0;
+function pollGreyLady(dt) {
+  ladyCooldown = Math.max(0, ladyCooldown - dt);
+  if (Math.abs(player.pos.y) > 1.5) return; // she keeps to the ground floor
+  const L = creatures.lady.group.position;
+  if (Math.hypot(L.x - player.pos.x, L.z - player.pos.z) < 2.4 && ladyCooldown === 0) {
+    ladyCooldown = 14;
+    if (ladyStage === 0) {
+      ladyStage = 1;
+      audio.rustle();
+      ui.caption(t('ladyAsk'), 8600);
+      persist();
+    } else if (ladyStage === 1) {
+      ui.caption(t('ladyWaiting'), 5200);
+    } else if (ladyStage === 2) {
+      ladyStage = 3;
+      spells.goldSparks.burst(new THREE.Vector3(L.x, 1.6, L.z), 70, 2, 1);
+      audio.chime();
+      ui.caption(t('ladyThanks'), 8600);
+      addPoints(30);
+      persist();
+    }
+  }
+  // the diadem lifts away only for someone who knows whose it is
+  if (ladyStage === 1) {
+    const d = world.diademPos;
+    if (Math.hypot(d.x - player.pos.x, d.z - player.pos.z) < 1.5) {
+      ladyStage = 2;
+      world.takeDiadem();
+      audio.chime();
+      ui.caption(t('diademTaken'), 6400);
+      persist();
+    }
+  }
+}
+
 // ── house points ─────────────────────────────────────────────────────────────
 let points = 50;
 function addPoints(delta) {
@@ -321,6 +407,8 @@ function persist() {
       hs: [...hintsShown],
       rr: world.doorByName.room.revealed ? 1 : 0,
       ck: hasCloak ? 1 : 0,
+      rid: riddleSolved ? 1 : 0,
+      gl: ladyStage,
     }));
   } catch (e) { /* storage unavailable — play unsaved */ }
 }
@@ -356,6 +444,17 @@ function persist() {
   if (Array.isArray(s.hs)) for (const k of s.hs) hintsShown.add(k);
   if (s.rr) world.revealRoom();
   if (s.ck) { hasCloak = true; world.takeCloak(); }
+  if (s.rid) {
+    riddleSolved = true;
+    world.solveRiddle();
+    const p = world.riddle.pedestal;
+    const b = world.riddle.bottles[world.riddle.answer];
+    b.position.set(p.x, p.y + b.userData.restH, p.z); // the dwarf keeps its place of honour
+  }
+  if (typeof s.gl === 'number') {
+    ladyStage = s.gl;
+    if (ladyStage >= 2) world.takeDiadem();
+  }
 })();
 ui.setPoints(points);
 world.setHousePoints(points);
@@ -411,6 +510,8 @@ window.__game = {
       holding: spells.held ? spells.held.userData.name : null,
       room: world.doorByName.room.revealed,
       cloak: { has: hasCloak, on: cloakOn },
+      riddle: riddleSolved,
+      lady: ladyStage,
       chill: +creatures.chill.toFixed(2),
       doors: Object.fromEntries(world.doors.map((d) => [d.id, { locked: d.locked, open: +d.openT.toFixed(2) }])),
       dementors: creatures.dementors.map((d) => ({ state: d.state, pos: [+d.x.toFixed(1), +d.z.toFixed(1)] })),
@@ -448,6 +549,8 @@ function mapActors() {
   }
   const g = creatures.ghost.group.position;
   list.push({ x: g.x, z: g.z, label: 'Sir Nicholas', color: '#7a92b8' });
+  const gl = creatures.lady.group.position;
+  list.push({ x: gl.x, z: gl.z, label: 'The Grey Lady', color: '#9aa7c4' });
   for (const d of creatures.dementors) {
     if (d.active) list.push({ x: d.x, z: d.z, label: 'Dementor', color: '#26262e' });
   }
@@ -539,6 +642,8 @@ function frameBody() {
     updateQuests();
     if (started) pollRoomOfRequirement();
     if (started) {
+      pollRiddle(0.2);
+      pollGreyLady(0.2);
       playT += 0.2;
       if (playT > 45) hintOnce('hintMap');
       if (Math.abs(player.pos.y) < 1.5 &&

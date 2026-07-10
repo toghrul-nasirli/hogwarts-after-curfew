@@ -88,6 +88,24 @@ const STRINGS = {
     cloakOffCap: 'You shrug the cloak from your shoulders.',
     hintErised: 'The figures in the glass are not reflections. Around the frame: “Erised stra ehru oyt ube cafru oyt on wohsi.” Read it backwards, slowly.',
     door_room: 'Room of Requirement',
+
+    hintRiddle: 'Seven bottles stand to attention beneath a chalked verse — and an empty plinth waits behind you. A swish and a flick would settle the argument. [6]',
+    riddleTitle: 'Which of us moves you onward?',
+    riddleBody: 'Danger lies before you, while safety lies behind;\n'
+      + 'one bottle of our seven only lets you move ahead.\n'
+      + 'Poison waits, always, at nettle wine’s left hand;\n'
+      + 'the twins that stand second from either end both hold the wine.\n'
+      + 'Different are the two at the ends, and neither is your friend;\n'
+      + 'neither the dwarf nor the giant carries death inside.\n'
+      + 'Choose — and set your answer on the plinth.',
+    riddleSolved: 'The dwarf glows warm upon the plinth. A slow clap echoes from nowhere in particular. Thirty points — grudgingly.',
+    riddlePoison: 'Black smoke curls off the plinth — poison. Ten points from your house, and be glad the plinth drank it first.',
+    riddleWine: 'Nettle wine. Pleasant, surely — but it opens nothing. Put it back and read again.',
+    riddleBack: 'The giant lurches — the room spins — and you are back at the door, exactly as promised.',
+    ladyAsk: 'A pearl-grey lady drifts by, eyes lowered. “My mother’s diadem… stolen, and I let it stay lost. It lies where everything is hidden.”',
+    ladyWaiting: '“Where everything is hidden…” the Grey Lady repeats, softly, to nobody.',
+    diademTaken: 'The tarnished tiara lifts from the warlock’s brow — lighter than air, and humming very faintly.',
+    ladyThanks: '“Wit beyond measure is man’s greatest treasure. It is found.” The Grey Lady bows her head. Thirty points, freely given.',
   },
 
   az: {
@@ -176,6 +194,24 @@ const STRINGS = {
     cloakOffCap: 'Plaşı çiynindən atırsan.',
     hintErised: 'Şüşədəki fiqurlar əks deyil. Çərçivədəki yazı: “Erised stra ehru oyt ube cafru oyt on wohsi.” Onu tərsinə, yavaş-yavaş oxu.',
     door_room: 'Ehtiyac Otağı',
+
+    hintRiddle: 'Tabaşirlə yazılmış şeirin altında yeddi şüşə farağat dayanıb — arxanda isə boş bir postament gözləyir. Bir yelləmə, bir çırtma mübahisəni həll edər. [6]',
+    riddleTitle: 'Hansımız səni irəli aparır?',
+    riddleBody: 'Təhlükə qarşındadır, təhlükəsizlik arxanda;\n'
+      + 'yeddimizdən yalnız biri səni irəli buraxır.\n'
+      + 'Zəhər həmişə gicitkən şərabının solunda gözləyir;\n'
+      + 'hər iki ucdan ikinci duran əkizlərdə şərab var.\n'
+      + 'Uclardakı ikisi fərqlidir — heç biri dostun deyil;\n'
+      + 'nə cırtdan, nə də nəhəng içində ölüm daşıyır.\n'
+      + 'Seç — və cavabını postamentin üstünə qoy.',
+    riddleSolved: 'Cırtdan postamentin üstündə isti işıqla parlayır. Haradansa asta bir alqış eşidilir. Otuz bal — könülsüz də olsa.',
+    riddlePoison: 'Postamentdən qara tüstü qalxır — zəhər. Fakültəndən on bal, sevin ki, onu əvvəlcə postament içdi.',
+    riddleWine: 'Gicitkən şərabı. Xoşdur, sözsüz — amma heç nə açmır. Yerinə qoy və yenidən oxu.',
+    riddleBack: 'Nəhəng silkələnir — otaq fırlanır — və sən yenidən qapının ağzındasan, vəd edildiyi kimi.',
+    ladyAsk: 'Mirvari-boz bir xanım gözlərini yerə dikib yanından süzür. “Anamın diademi… oğurlandı, mən isə itmiş qalmasına imkan verdim. O, hər şeyin gizlədildiyi yerdədir.”',
+    ladyWaiting: '“Hər şeyin gizlədildiyi yerdə…” — Boz Xanım astaca, heç kimə təkrarlayır.',
+    diademTaken: 'Tutqun tac cadugərin alnından qalxır — havadan yüngül, lap astaca uğuldayır.',
+    ladyThanks: '“Ölçüsüz ağıl insanın ən böyük xəzinəsidir. O tapıldı.” Boz Xanım başını əyir. Otuz bal, ürəkdən.',
   },
 };
 

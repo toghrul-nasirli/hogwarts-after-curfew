@@ -946,14 +946,16 @@ export function buildWorld(scene) {
   // and the Mirror of Erised, retired here after a certain year
   box(20.4, 0, 12, 21.6, 0.9, 12.9, mats.woodDark);
   box(20.6, 0.9, 12.2, 21.4, 1.5, 12.8, mats.woodDark, { collide: false });
-  box(26.2, 0, 11.9, 27.4, 2.5, 12.8, mats.woodDark);
+  // the wounded cabinet stands against the west wall — the room's east end
+  // belongs to a facade tower's footprint and nobody can actually walk there
+  box(20.3, 0, 10.3, 21.2, 2.5, 11.5, mats.woodDark);
   {
     const cabDoor = new THREE.BoxGeometry(0.1, 2.2, 0.7);
     cabDoor.rotateZ(0.09);
-    cabDoor.translate(26.05, 1.1, 12.35);
+    cabDoor.translate(21.28, 1.1, 10.9);
     addMerged(cabDoor, mats.doorWood);
     const c3 = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.42, 0.42), mats.woodDark);
-    c3.position.set(27.2, 0.21, 9.8);
+    c3.position.set(23.8, 0.21, 12.5);
     liftable(c3, 'crate', 0.21);
   }
 
@@ -1009,44 +1011,54 @@ export function buildWorld(scene) {
 
   // atop the vanishing cabinet: the chipped bust of an ugly old warlock,
   // wearing a dusty wig and a tarnished tiara — somebody's marker, once
+  const diademG = new THREE.Group();
+  function takeDiadem() {
+    diademG.visible = false;
+  }
   {
     const dustyWig = new THREE.MeshLambertMaterial({ color: 0x99938a });
-    const shoulders = new THREE.BoxGeometry(0.34, 0.12, 0.16);
-    shoulders.translate(26.8, 2.56, 12.35);
+    const shoulders = new THREE.BoxGeometry(0.16, 0.12, 0.34);
+    shoulders.translate(20.75, 2.56, 10.9);
     addMerged(shoulders, mats.stone);
     const head = new THREE.SphereGeometry(0.11, 10, 8);
-    head.translate(26.8, 2.74, 12.35);
+    head.translate(20.75, 2.74, 10.9);
     addMerged(head, mats.stone);
     const nose = new THREE.ConeGeometry(0.028, 0.08, 6);
-    nose.rotateX(-Math.PI / 2);
-    nose.translate(26.8, 2.74, 12.22);
+    nose.rotateZ(-Math.PI / 2); // he faces east, into the room
+    nose.translate(20.88, 2.74, 10.9);
     addMerged(nose, mats.stone);
     const wig = new THREE.SphereGeometry(0.125, 10, 8);
-    wig.scale(1, 0.75, 1.1);
-    wig.translate(26.8, 2.82, 12.38);
+    wig.scale(1.1, 0.75, 1);
+    wig.translate(20.72, 2.82, 10.9);
     addMerged(wig, dustyWig);
-    const tiara = new THREE.TorusGeometry(0.085, 0.014, 6, 14);
-    tiara.rotateX(Math.PI / 2);
-    tiara.translate(26.8, 2.9, 12.36);
-    addMerged(tiara, mats.gold);
-    const gem = new THREE.OctahedronGeometry(0.03);
-    gem.translate(26.8, 2.91, 12.27);
-    addMerged(gem, new THREE.MeshStandardMaterial({
-      color: 0x1a2a4a, emissive: 0x2a4a8a, emissiveIntensity: 0.5, metalness: 0.3, roughness: 0.4,
-    }));
+    // the tarnished tiara is Ravenclaw's lost diadem — its own mesh, because
+    // one day somebody comes to take it home
+    const tiaraMesh = new THREE.Mesh((() => {
+      const tg = new THREE.TorusGeometry(0.085, 0.014, 6, 14);
+      tg.rotateX(Math.PI / 2);
+      return tg;
+    })(), mats.gold);
+    const gemMesh = new THREE.Mesh(new THREE.OctahedronGeometry(0.03),
+      new THREE.MeshStandardMaterial({
+        color: 0x1a2a4a, emissive: 0x2a4a8a, emissiveIntensity: 0.5, metalness: 0.3, roughness: 0.4,
+      }));
+    gemMesh.position.set(0.09, 0.01, 0);
+    diademG.add(tiaraMesh, gemMesh);
+    diademG.position.set(20.75, 2.9, 10.9);
+    staticG.add(diademG);
     // a corked bottle beside it, contents still swirling after all these years
     const bottle = new THREE.CylinderGeometry(0.045, 0.05, 0.15, 8);
-    bottle.translate(26.32, 2.575, 12.1);
+    bottle.translate(20.75, 2.575, 10.45);
     addMerged(bottle, mats.glass);
     const neck = new THREE.CylinderGeometry(0.016, 0.02, 0.07, 8);
-    neck.translate(26.32, 2.68, 12.1);
+    neck.translate(20.75, 2.68, 10.45);
     addMerged(neck, mats.glass);
     const cork = new THREE.CylinderGeometry(0.018, 0.018, 0.03, 6);
-    cork.translate(26.32, 2.73, 12.1);
+    cork.translate(20.75, 2.73, 10.45);
     addMerged(cork, mats.woodDark);
     const brewMat = new THREE.MeshStandardMaterial({ color: 0x1d4030, emissive: 0x35c86a, emissiveIntensity: 0.4 });
     const brew = new THREE.CylinderGeometry(0.036, 0.041, 0.11, 8);
-    brew.translate(26.32, 2.56, 12.1);
+    brew.translate(20.75, 2.56, 10.45);
     addMerged(brew, brewMat);
     updatables.push((dt2, tt) => { brewMat.emissiveIntensity = 0.35 + Math.sin(tt * 1.9) * 0.18; });
   }
@@ -1066,7 +1078,7 @@ export function buildWorld(scene) {
       return n * 0.05;
     };
     const hA = stack(20.6, 9.9, 6, 1);
-    stack(26.5, 10.6, 4, 4);
+    stack(21.5, 9.55, 4, 4);
     const rust = new THREE.MeshLambertMaterial({ color: 0x6e5a48 });
     const blade = new THREE.BoxGeometry(0.05, 1.15, 0.11);
     blade.rotateZ(0.59);
@@ -1088,10 +1100,10 @@ export function buildWorld(scene) {
       addMerged(cu, cushionMats[ci]);
     }
     const loose = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.13, 0.52), cushionMats[0].clone());
-    loose.position.set(25.0, 0.065, 10.4);
+    loose.position.set(22.5, 0.065, 12.15);
     liftable(loose, 'cushion', 0.065);
     const primer = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.05, 0.26), bookMats[2].clone());
-    primer.position.set(25.4, 0.025, 12.3);
+    primer.position.set(22.3, 0.025, 10.6);
     liftable(primer, 'book', 0.025);
     // a Sneakoscope on the tall stack, still slowly turning — Dark Detectors
     // never quite believe the coast is clear
@@ -1300,6 +1312,103 @@ export function buildWorld(scene) {
   // work table with a candelabra worth lighting
   box(-40, -5, -21.5, -38.4, -4.15, -19.8, mats.woodDark);
   candelabra(-39.2, -4.15, -20.6, true);
+
+  // ── Snape's bottle riddle ─────────────────────────────────────────────────
+  // Seven bottles beneath a chalked verse; the right one, levitated onto the
+  // plinth, opens nothing and proves everything. Text is drawn lazily by
+  // main.js once the language is known.
+  const riddleCanvas = document.createElement('canvas');
+  riddleCanvas.width = 1024;
+  riddleCanvas.height = 448;
+  const riddleTex = new THREE.CanvasTexture(riddleCanvas);
+  riddleTex.colorSpace = THREE.SRGBColorSpace;
+  function setRiddleText(title, lines) {
+    const g = riddleCanvas.getContext('2d');
+    g.fillStyle = '#1c2b24';
+    g.fillRect(0, 0, 1024, 448);
+    let rs = 3;
+    const rr = () => (rs = (rs * 16807 + 19) % 2147483647) / 2147483647;
+    for (let i = 0; i < 700; i++) {
+      g.fillStyle = `rgba(255,255,255,${rr() * 0.03})`;
+      g.fillRect(rr() * 1024, rr() * 448, 2, 2);
+    }
+    g.textAlign = 'center';
+    g.fillStyle = 'rgba(228,228,215,0.92)';
+    g.font = 'italic 40px Georgia';
+    g.fillText(title, 512, 64);
+    g.font = 'italic 26px Georgia';
+    g.fillStyle = 'rgba(228,228,215,0.8)';
+    lines.forEach((line, i) => g.fillText(line, 512, 120 + i * 42));
+    riddleTex.needsUpdate = true;
+  }
+  {
+    const bbf = new THREE.Mesh(new THREE.BoxGeometry(5.5, 2.5, 0.06), mats.woodDark);
+    bbf.position.set(-36.5, -2.6, -15.2);
+    staticG.add(bbf);
+    const board = new THREE.Mesh(new THREE.PlaneGeometry(5.2, 2.28),
+      new THREE.MeshStandardMaterial({ map: riddleTex, roughness: 0.95, ...DECAL }));
+    board.position.set(-36.5, -2.6, -15.26); // room side of the frame
+    board.rotation.y = Math.PI;
+    staticG.add(board);
+  }
+  // the line of seven, on their own table beneath the verse
+  box(-39.3, -5, -16.4, -33.7, -4.2, -15.5, mats.woodDark);
+  surfaces.push({ minX: -39.3, maxX: -33.7, minZ: -16.4, maxZ: -15.5, y: -4.2 });
+  const riddleBottles = [];
+  {
+    const rMat = new THREE.MeshBasicMaterial({ vertexColors: true });
+    const tint = (g2, col) => {
+      const n = g2.attributes.position.count;
+      const arr = new Float32Array(n * 3);
+      for (let k = 0; k < n; k++) { arr[k * 3] = col.r; arr[k * 3 + 1] = col.g; arr[k * 3 + 2] = col.b; }
+      g2.setAttribute('color', new THREE.BufferAttribute(arr, 3));
+      return g2;
+    };
+    const corkCol = new THREE.Color(0x4a3520);
+    // contents (never shown, only deduced): P W P F P W B — three poisons, the
+    // nettle-wine twins second from either end, the dwarf moves you onward,
+    // the giant at the right end sends you back
+    const scales = [1.0, 1.18, 0.9, 0.62, 1.05, 1.18, 1.55];
+    const tints = [0x8a8f96, 0x3f6e3a, 0xa07840, 0x6a5090, 0x50707e, 0x3f6e3a, 0x704848];
+    for (let i = 0; i < 7; i++) {
+      const s = scales[i];
+      const col = new THREE.Color(tints[i]);
+      const body = new THREE.CylinderGeometry(0.07 * s, 0.08 * s, 0.24 * s, 10);
+      body.translate(0, 0.12 * s, 0);
+      const shoulder = new THREE.CylinderGeometry(0.028 * s, 0.07 * s, 0.07 * s, 10);
+      shoulder.translate(0, 0.275 * s, 0);
+      const neck = new THREE.CylinderGeometry(0.024 * s, 0.026 * s, 0.09 * s, 8);
+      neck.translate(0, 0.35 * s, 0);
+      const cork = new THREE.CylinderGeometry(0.028 * s, 0.028 * s, 0.045 * s, 6);
+      cork.translate(0, 0.415 * s, 0);
+      const H = 0.44 * s;
+      const geo = mergeGeometries(
+        [tint(body, col), tint(shoulder, col), tint(neck, col), tint(cork, corkCol)], false);
+      geo.translate(0, -H / 2, 0); // origin mid-height so drop physics rests it cleanly
+      const m = new THREE.Mesh(geo, rMat);
+      const bx = -38.75 + i * 0.75;
+      m.position.set(bx, -4.2 + H / 2, -15.95);
+      m.userData.riddleIdx = i;
+      m.userData.home = [bx, -4.2 + H / 2, -15.95];
+      liftable(m, 'bottle', H / 2);
+      riddleBottles.push(m);
+    }
+  }
+  // the answer plinth, waiting in the middle of the floor
+  box(-36.9, -5, -18.6, -36.1, -3.95, -17.8, mats.stone);
+  surfaces.push({ minX: -36.9, maxX: -36.1, minZ: -18.6, maxZ: -17.8, y: -3.95 });
+  const plinthMat = new THREE.MeshStandardMaterial({ color: 0x22303e, emissive: 0x35506e, emissiveIntensity: 0.4 });
+  {
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(0.3, 14), plinthMat);
+    disc.rotation.x = -Math.PI / 2;
+    disc.position.set(-36.5, -3.944, -18.2);
+    staticG.add(disc);
+  }
+  function solveRiddle() {
+    plinthMat.color.set(0x6a5420);
+    plinthMat.emissive.set(0xd8a845);
+    plinthMat.emissiveIntensity = 0.9;
+  }
 
   // ═══ FLOOR REGIONS ══════════════════════════════════════════════════════
   regions.push({ minX: -43, maxX: 10, minZ: -27, maxZ: -14, y: -5 }); // dungeon + potions
@@ -1546,6 +1655,9 @@ export function buildWorld(scene) {
     doorsAnimating, ignitables, ignite, extinguish,
     setHouse, setHousePoints, lightLevelAt, dynamicLight, surfaceHeightAt,
     revealRoom, takeCloak, cloakPos: { x: 24, y: 1, z: 11.5 },
+    riddle: { bottles: riddleBottles, pedestal: { x: -36.5, y: -3.95, z: -18.2 }, answer: 3 },
+    setRiddleText, solveRiddle,
+    takeDiadem, diademPos: { x: 20.75, y: 2.9, z: 10.9 },
     raycastRoot: [staticG, doorsG, liftG],
     liftables: liftG.children,
     spawn: { x: 0, z: 38, yaw: 0 },

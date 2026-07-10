@@ -325,9 +325,9 @@ function collideMove(world, pos, dx, dz, r, footY) {
 
 // Nearly Headless Nick — harmless ambience drifting through the Great Hall
 class Ghost {
-  constructor(scene) {
+  constructor(scene, opts = {}) {
     this.mat = new THREE.MeshBasicMaterial({
-      color: 0x9fb8d8, transparent: true, opacity: 0.22,
+      color: opts.color || 0x9fb8d8, transparent: true, opacity: 0.22,
       blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
     });
     const g = this.group = new THREE.Group();
@@ -335,18 +335,31 @@ class Ghost {
       [0.42, 0], [0.36, 0.5], [0.28, 1.0], [0.3, 1.3], [0.2, 1.5], [0.06, 1.58],
     ].map(([r, y]) => new THREE.Vector2(r, y));
     g.add(new THREE.Mesh(new THREE.LatheGeometry(profile, 14), this.mat));
-    const ruff = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.05, 6, 14), this.mat);
-    ruff.position.y = 1.52;
-    ruff.rotation.x = Math.PI / 2;
-    g.add(ruff);
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 8), this.mat);
-    head.position.set(0.1, 1.62, 0);
-    head.rotation.z = -0.55; // nearly headless, after all
-    g.add(head);
+    if (opts.lady) {
+      // the Grey Lady: head held high, a long veil falling behind
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 8), this.mat);
+      head.position.set(0, 1.68, 0);
+      g.add(head);
+      const veil = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.7, 8, 1, true), this.mat);
+      veil.position.set(-0.06, 1.45, 0);
+      veil.rotation.z = 0.18;
+      g.add(veil);
+    } else {
+      const ruff = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.05, 6, 14), this.mat);
+      ruff.position.y = 1.52;
+      ruff.rotation.x = Math.PI / 2;
+      g.add(ruff);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 8), this.mat);
+      head.position.set(0.1, 1.62, 0);
+      head.rotation.z = -0.55; // nearly headless, after all
+      g.add(head);
+    }
     scene.add(g);
-    this.wps = [[-40, -8], [-16, -8], [-15, 3], [-28, 6], [-40, 3]];
+    this.wps = opts.wps || [[-40, -8], [-16, -8], [-15, 3], [-28, 6], [-40, 3]];
     this.idx = 1;
-    g.position.set(-40, 1, -8); // begins his rounds inside the Great Hall
+    const s = opts.start || [-40, 1, -8]; // Nick begins his rounds in the Great Hall
+    g.position.set(s[0], s[1], s[2]);
+    this.speed = opts.speed || 0.8;
     this.phase = Math.random() * 9;
   }
 
@@ -356,8 +369,8 @@ class Ghost {
     const d = Math.hypot(dx, dz);
     if (d < 0.6) this.idx = (this.idx + 1) % this.wps.length;
     else {
-      this.group.position.x += (dx / d) * 0.8 * dt;
-      this.group.position.z += (dz / d) * 0.8 * dt;
+      this.group.position.x += (dx / d) * this.speed * dt;
+      this.group.position.z += (dz / d) * this.speed * dt;
       const targetYaw = Math.atan2(dx, dz);
       let dy = targetYaw - this.group.rotation.y;
       while (dy > Math.PI) dy -= Math.PI * 2;
@@ -604,6 +617,12 @@ export class Creatures {
     );
     this.patronus = new Patronus(scene, world);
     this.ghost = new Ghost(scene);
+    // the Grey Lady drifts where the Entrance Hall meets the east corridor,
+    // never far from the wall that hides what she lost
+    this.lady = new Ghost(scene, {
+      lady: true, color: 0xd3d8e6, speed: 0.55,
+      wps: [[3, 1], [9, 4], [15, 4], [9, 0]], start: [4, 1, 2],
+    });
     this.norris = new MrsNorris(scene, world);
     this.filch = new Filch(scene, world);
     this.banishedCount = 0;
@@ -638,6 +657,7 @@ export class Creatures {
 
   update(dt, t, player, lumosOn = false, cloaked = false) {
     this.ghost.update(dt, t);
+    this.lady.update(dt, t);
     this.norris.update(dt, t, player, lumosOn, cloaked, () => {
       this.filch.spawn(player.pos);
       if (this.onSpotted) this.onSpotted();
