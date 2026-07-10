@@ -308,3 +308,120 @@ export function blackboardTexture() {
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
+
+// The Mirror of Erised's vision — an old photograph of a family, waving back.
+// Painted soft and sepia-toned, like a memory that never happened.
+export function erisedVisionTexture() {
+  const w = 256, h = 512, c = canvas(w, h), g = c.getContext('2d'), r = rng(42);
+  const bg = g.createLinearGradient(0, 0, 0, h);
+  bg.addColorStop(0, '#3a3226');
+  bg.addColorStop(0.55, '#2b2118');
+  bg.addColorStop(1, '#171009');
+  g.fillStyle = bg;
+  g.fillRect(0, 0, w, h);
+  const halo = g.createRadialGradient(w / 2, 245, 25, w / 2, 245, 195);
+  halo.addColorStop(0, 'rgba(255,214,150,0.28)');
+  halo.addColorStop(1, 'rgba(255,214,150,0)');
+  g.fillStyle = halo;
+  g.fillRect(0, 0, w, h);
+
+  g.save();
+  g.translate(w * 0.11, h * 0.22); // figures sit small and deep in the glass
+  g.scale(0.78, 0.78);
+  g.shadowColor = 'rgba(255,220,170,0.4)';
+  g.shadowBlur = 8; // everything painted goes dream-soft
+
+  function figure(cx, robe, hair, skin, longHair, armDir) {
+    // robe
+    g.fillStyle = robe;
+    g.beginPath();
+    g.moveTo(cx - 21, 275);
+    g.lineTo(cx + 21, 275);
+    g.lineTo(cx + 30, 478);
+    g.lineTo(cx - 30, 478);
+    g.closePath();
+    g.fill();
+    // waving arm, raised outward
+    g.save();
+    g.translate(cx + armDir * 17, 288);
+    g.rotate(armDir * 0.62);
+    g.fillStyle = robe;
+    g.fillRect(-7, -68, 14, 70);
+    g.fillStyle = skin;
+    g.beginPath();
+    g.arc(0, -74, 8, 0, Math.PI * 2);
+    g.fill();
+    g.restore();
+    // head
+    g.fillStyle = skin;
+    g.beginPath();
+    g.arc(cx, 244, 21, 0, Math.PI * 2);
+    g.fill();
+    // hair
+    g.fillStyle = hair;
+    g.beginPath();
+    g.ellipse(cx, 231, 23, 14, 0, Math.PI, 0);
+    g.fill();
+    if (longHair) {
+      g.fillRect(cx - 25, 231, 10, 78);
+      g.fillRect(cx + 15, 231, 10, 78);
+    } else {
+      // untidy tufts
+      for (const [ox, oy] of [[-16, -2], [-5, -7], [6, -6], [15, -1]]) {
+        g.beginPath();
+        g.moveTo(cx + ox, 222 + oy);
+        g.lineTo(cx + ox + 5, 212 + oy);
+        g.lineTo(cx + ox + 9, 222 + oy);
+        g.closePath();
+        g.fill();
+      }
+    }
+  }
+  figure(92, '#26303f', '#1d1a17', '#b98f6b', false, -1);  // messy-haired, waving left
+  figure(164, '#4c2a30', '#7c3b20', '#c09873', true, 1);   // long auburn hair, waving right
+  // round glasses on the first
+  g.shadowBlur = 0;
+  g.strokeStyle = 'rgba(25,20,16,0.8)';
+  g.lineWidth = 2;
+  g.beginPath(); g.arc(85, 246, 6, 0, Math.PI * 2); g.stroke();
+  g.beginPath(); g.arc(99, 246, 6, 0, Math.PI * 2); g.stroke();
+  g.beginPath(); g.moveTo(91, 246); g.lineTo(93, 246); g.stroke();
+  g.restore();
+
+  // old-photograph treatment: heavy sepia, grain, a couple of scratches, vignette
+  g.fillStyle = 'rgba(96,70,42,0.22)';
+  g.fillRect(0, 0, w, h);
+  g.fillStyle = 'rgba(15,10,5,0.18)';
+  g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 900; i++) {
+    g.fillStyle = r() > 0.5 ? `rgba(255,240,210,${r() * 0.05})` : `rgba(0,0,0,${r() * 0.07})`;
+    g.fillRect(r() * w, r() * h, 2, 2);
+  }
+  g.strokeStyle = 'rgba(230,220,200,0.05)';
+  g.lineWidth = 1;
+  g.beginPath(); g.moveTo(44, 90); g.lineTo(74, 208); g.stroke();
+  g.beginPath(); g.moveTo(206, 300); g.lineTo(188, 434); g.stroke();
+  const vig = g.createRadialGradient(w / 2, h / 2, h * 0.18, w / 2, h / 2, h * 0.6);
+  vig.addColorStop(0, 'rgba(8,5,2,0)');
+  vig.addColorStop(1, 'rgba(8,5,2,0.75)');
+  g.fillStyle = vig;
+  g.fillRect(0, 0, w, h);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+// The inscription carved around the Mirror of Erised's frame.
+export function erisedInscriptionTexture() {
+  const w = 512, h = 64, c = canvas(w, h), g = c.getContext('2d');
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.font = 'italic 24px Georgia';
+  g.fillStyle = 'rgba(58,42,12,0.55)'; // engraved shadow
+  g.fillText('Erised stra ehru oyt ube cafru oyt on wohsi', w / 2 + 1, h / 2 + 2);
+  g.fillStyle = 'rgba(46,32,8,0.95)';
+  g.fillText('Erised stra ehru oyt ube cafru oyt on wohsi', w / 2, h / 2);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}

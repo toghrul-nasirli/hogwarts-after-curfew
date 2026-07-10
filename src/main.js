@@ -228,6 +228,11 @@ function pollRoomOfRequirement() {
       persist();
     }
   }
+  // the Mirror of Erised, for whoever lingers before it
+  if (world.doorByName.room.revealed && Math.abs(player.pos.y) < 1.5 &&
+      Math.abs(player.pos.x - 22.6) < 1.4 && player.pos.z > 10.1 && player.pos.z < 12.6) {
+    hintOnce('hintErised');
+  }
 }
 
 // ── house points ─────────────────────────────────────────────────────────────
@@ -386,7 +391,7 @@ window.__game = {
     if (v && !hasCloak) { hasCloak = true; world.takeCloak(); }
     setCloak(v);
   },
-  scene, camera, renderer, creatures, player,
+  scene, camera, renderer, creatures, player, world,
   state() {
     return {
       pos: [player.pos.x, player.pos.y, player.pos.z].map((v) => +v.toFixed(2)),

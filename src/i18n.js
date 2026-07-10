@@ -75,6 +75,7 @@ const STRINGS = {
     door_classroom: 'Charms Classroom',
     door_potions: 'Potions Store',
     item_crate: 'crate', item_book: 'book', item_goblet: 'goblet', item_flask: 'flask', item_bottle: 'bottle',
+    item_cushion: 'cushion',
 
     hintMap: 'Something rustles in your pocket — old parchment, swearing in faded ink that it is up to no good. [M]',
     hintCat: 'Eyes flash low in the dark ahead. Cats hunt by light — a lit wand is a lantern to them. Nox, perhaps?',
@@ -85,6 +86,7 @@ const STRINGS = {
     cloakFound: 'Beneath the dust: a cloak woven of something like moonlight. Press C to disappear. (Dementors, mind, do not hunt with eyes.)',
     cloakOnCap: 'You melt from sight.',
     cloakOffCap: 'You shrug the cloak from your shoulders.',
+    hintErised: 'The figures in the glass are not reflections. Around the frame: “Erised stra ehru oyt ube cafru oyt on wohsi.” Read it backwards, slowly.',
     door_room: 'Room of Requirement',
   },
 
@@ -161,6 +163,7 @@ const STRINGS = {
     door_classroom: 'Sehrlər Sinfi',
     door_potions: 'İksir Anbarı',
     item_crate: 'yeşik', item_book: 'kitab', item_goblet: 'qədəh', item_flask: 'kolba', item_bottle: 'şüşə',
+    item_cushion: 'yastıq',
 
     hintMap: 'Cibində nəsə xışıldayır — köhnə perqament; solğun mürəkkəblə and içir ki, niyyəti yaxşı deyil. [M]',
     hintCat: 'Qarşıda, qaranlıqda alçaqdan gözlər parıldayır. Pişiklər işıqla ovlayır — yanan əsa onlar üçün fənərdir. Bəlkə Nox?',
@@ -171,6 +174,7 @@ const STRINGS = {
     cloakFound: 'Tozun altında: sanki ay işığından toxunmuş bir plaş. Yox olmaq üçün C bas. (Amma unutma — Dementorlar gözlə ovlamır.)',
     cloakOnCap: 'Gözdən itirsən.',
     cloakOffCap: 'Plaşı çiynindən atırsan.',
+    hintErised: 'Şüşədəki fiqurlar əks deyil. Çərçivədəki yazı: “Erised stra ehru oyt ube cafru oyt on wohsi.” Onu tərsinə, yavaş-yavaş oxu.',
     door_room: 'Ehtiyac Otağı',
   },
 };

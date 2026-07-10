@@ -17,6 +17,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import {
   stoneTexture, flagstoneTexture, woodTexture, starsTexture, glowTexture,
   moonTexture, bannerTexture, portraitTexture, blackboardTexture, signTexture,
+  erisedVisionTexture, erisedInscriptionTexture,
 } from './textures.js';
 
 const DEG = Math.PI / 180;
@@ -941,7 +942,8 @@ export function buildWorld(scene) {
   box(19, 4.6, 9, 29, 5, 13, mats.stoneDark, { collide: false });
   wallZ(9, 13, 19, 20, 0, 4.6, mats.stone);
   wallZ(9, 13, 28, 29, 0, 4.6, mats.stone);
-  // hidden things: a crate pile, a wounded cabinet, a cracked mirror
+  // hidden things: a crate pile, a wounded cabinet that vanishes things,
+  // and the Mirror of Erised, retired here after a certain year
   box(20.4, 0, 12, 21.6, 0.9, 12.9, mats.woodDark);
   box(20.6, 0.9, 12.2, 21.4, 1.5, 12.8, mats.woodDark, { collide: false });
   box(26.2, 0, 11.9, 27.4, 2.5, 12.8, mats.woodDark);
@@ -950,20 +952,164 @@ export function buildWorld(scene) {
     cabDoor.rotateZ(0.09);
     cabDoor.translate(26.05, 1.1, 12.35);
     addMerged(cabDoor, mats.doorWood);
+    const c3 = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.42, 0.42), mats.woodDark);
+    c3.position.set(27.2, 0.21, 9.8);
+    liftable(c3, 'crate', 0.21);
+  }
+
+  // the Mirror of Erised: gold arch on clawed feet, an inscription nobody
+  // reads forwards, and glass that shows what the heart wants — not the room
+  {
     const mirrorFrame = new THREE.BoxGeometry(1.3, 2.5, 0.08);
     mirrorFrame.translate(22.6, 1.5, 12.78);
     addMerged(mirrorFrame, mats.gold);
+    const lintel = new THREE.BoxGeometry(1.3, 0.3, 0.08);
+    lintel.translate(22.6, 2.9, 12.78);
+    addMerged(lintel, mats.gold);
+    const arch = new THREE.TorusGeometry(0.65, 0.07, 8, 20, Math.PI);
+    arch.translate(22.6, 3.05, 12.78);
+    addMerged(arch, mats.gold);
+    const finial = new THREE.ConeGeometry(0.07, 0.18, 8);
+    finial.translate(22.6, 3.78, 12.78);
+    addMerged(finial, mats.gold);
+    for (const fx of [22.12, 23.08]) { // clawed feet
+      const foot = new THREE.BoxGeometry(0.2, 0.25, 0.34);
+      foot.translate(fx, 0.125, 12.72);
+      addMerged(foot, mats.gold);
+      const claw = new THREE.SphereGeometry(0.05, 8, 6);
+      claw.translate(fx, 0.05, 12.53);
+      addMerged(claw, mats.gold);
+    }
+    const inscription = new THREE.Mesh(new THREE.PlaneGeometry(1.26, 0.26),
+      new THREE.MeshBasicMaterial({ map: erisedInscriptionTexture(), transparent: true, ...DECAL }));
+    inscription.position.set(22.6, 2.9, 12.735);
+    inscription.rotation.y = Math.PI;
+    staticG.add(inscription);
     const mirror = new THREE.Mesh(new THREE.PlaneGeometry(1.05, 2.2),
       new THREE.MeshStandardMaterial({ color: 0x27313f, emissive: 0x44586e, emissiveIntensity: 0.35 }));
     mirror.position.set(22.6, 1.45, 12.72);
     mirror.rotation.y = Math.PI;
     staticG.add(mirror);
-    const c3 = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.42, 0.42), mats.woodDark);
-    c3.position.set(27.2, 0.21, 9.8);
-    liftable(c3, 'crate', 0.21);
+    // the vision fades in when someone stands before the glass
+    const visionMat = new THREE.MeshBasicMaterial({
+      map: erisedVisionTexture(), transparent: true, opacity: 0, depthWrite: false,
+    });
+    const vision = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 2.1), visionMat);
+    vision.position.set(22.6, 1.45, 12.7);
+    vision.rotation.y = Math.PI;
+    staticG.add(vision);
+    let visBase = 0;
+    updatables.push((dt2, tt, p) => {
+      const near = p && Math.abs(p.x - 22.6) < 1.4 && p.z > 10.1 && p.z < 12.6 && Math.abs(p.y) < 1.5;
+      visBase += ((near ? 0.8 : 0) - visBase) * Math.min(1, dt2 * 2);
+      visionMat.opacity = visBase * (0.93 + Math.sin(tt * 1.4) * 0.07);
+    });
+  }
+
+  // atop the vanishing cabinet: the chipped bust of an ugly old warlock,
+  // wearing a dusty wig and a tarnished tiara — somebody's marker, once
+  {
+    const dustyWig = new THREE.MeshLambertMaterial({ color: 0x99938a });
+    const shoulders = new THREE.BoxGeometry(0.34, 0.12, 0.16);
+    shoulders.translate(26.8, 2.56, 12.35);
+    addMerged(shoulders, mats.stone);
+    const head = new THREE.SphereGeometry(0.11, 10, 8);
+    head.translate(26.8, 2.74, 12.35);
+    addMerged(head, mats.stone);
+    const nose = new THREE.ConeGeometry(0.028, 0.08, 6);
+    nose.rotateX(-Math.PI / 2);
+    nose.translate(26.8, 2.74, 12.22);
+    addMerged(nose, mats.stone);
+    const wig = new THREE.SphereGeometry(0.125, 10, 8);
+    wig.scale(1, 0.75, 1.1);
+    wig.translate(26.8, 2.82, 12.38);
+    addMerged(wig, dustyWig);
+    const tiara = new THREE.TorusGeometry(0.085, 0.014, 6, 14);
+    tiara.rotateX(Math.PI / 2);
+    tiara.translate(26.8, 2.9, 12.36);
+    addMerged(tiara, mats.gold);
+    const gem = new THREE.OctahedronGeometry(0.03);
+    gem.translate(26.8, 2.91, 12.27);
+    addMerged(gem, new THREE.MeshStandardMaterial({
+      color: 0x1a2a4a, emissive: 0x2a4a8a, emissiveIntensity: 0.5, metalness: 0.3, roughness: 0.4,
+    }));
+    // a corked bottle beside it, contents still swirling after all these years
+    const bottle = new THREE.CylinderGeometry(0.045, 0.05, 0.15, 8);
+    bottle.translate(26.32, 2.575, 12.1);
+    addMerged(bottle, mats.glass);
+    const neck = new THREE.CylinderGeometry(0.016, 0.02, 0.07, 8);
+    neck.translate(26.32, 2.68, 12.1);
+    addMerged(neck, mats.glass);
+    const cork = new THREE.CylinderGeometry(0.018, 0.018, 0.03, 6);
+    cork.translate(26.32, 2.73, 12.1);
+    addMerged(cork, mats.woodDark);
+    const brewMat = new THREE.MeshStandardMaterial({ color: 0x1d4030, emissive: 0x35c86a, emissiveIntensity: 0.4 });
+    const brew = new THREE.CylinderGeometry(0.036, 0.041, 0.11, 8);
+    brew.translate(26.32, 2.56, 12.1);
+    addMerged(brew, brewMat);
+    updatables.push((dt2, tt) => { brewMat.emissiveIntensity = 0.35 + Math.sin(tt * 1.9) * 0.18; });
+  }
+
+  // stacks of banned, graffitied or stolen books; a rusting sword against the
+  // crates; cushions left over from somebody's defence practice
+  {
+    const bookMats = [0x5a2c22, 0x2e4034, 0x3a3050, 0x6b5a30, 0x4a2438, 0x33424e]
+      .map((col) => new THREE.MeshLambertMaterial({ color: col }));
+    const stack = (sx, sz, n, seed) => {
+      for (let i = 0; i < n; i++) {
+        const b = new THREE.BoxGeometry(0.36, 0.05, 0.26);
+        b.rotateY(Math.sin(seed + i * 2.1) * 0.35);
+        b.translate(sx + Math.sin(seed * 3 + i) * 0.03, 0.025 + i * 0.05, sz + Math.cos(seed + i * 1.7) * 0.03);
+        addMerged(b, bookMats[(i + seed) % bookMats.length]);
+      }
+      return n * 0.05;
+    };
+    const hA = stack(20.6, 9.9, 6, 1);
+    stack(26.5, 10.6, 4, 4);
+    const rust = new THREE.MeshLambertMaterial({ color: 0x6e5a48 });
+    const blade = new THREE.BoxGeometry(0.05, 1.15, 0.11);
+    blade.rotateZ(0.59);
+    blade.translate(21.9, 0.5, 12.45);
+    addMerged(blade, rust);
+    const guard = new THREE.BoxGeometry(0.26, 0.035, 0.05);
+    guard.rotateZ(0.59);
+    guard.translate(21.62, 0.96, 12.45);
+    addMerged(guard, rust);
+    const pommel = new THREE.SphereGeometry(0.032, 8, 6);
+    pommel.translate(21.5, 1.13, 12.45);
+    addMerged(pommel, rust);
+    const cushionMats = [0x6e2430, 0x453763, 0x5a5a30].map((col) => new THREE.MeshLambertMaterial({ color: col }));
+    const spots = [[21.6, 10.3, 0], [22.5, 9.8, 1], [25.8, 9.7, 2]];
+    for (const [cx, cz, ci] of spots) {
+      const cu = new THREE.BoxGeometry(0.52, 0.13, 0.52);
+      cu.rotateY(ci * 0.7);
+      cu.translate(cx, 0.065, cz);
+      addMerged(cu, cushionMats[ci]);
+    }
+    const loose = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.13, 0.52), cushionMats[0].clone());
+    loose.position.set(25.0, 0.065, 10.4);
+    liftable(loose, 'cushion', 0.065);
+    const primer = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.05, 0.26), bookMats[2].clone());
+    primer.position.set(25.4, 0.025, 12.3);
+    liftable(primer, 'book', 0.025);
+    // a Sneakoscope on the tall stack, still slowly turning — Dark Detectors
+    // never quite believe the coast is clear
+    const scopeMat = new THREE.MeshStandardMaterial({
+      color: 0x8fd0e8, emissive: 0x2a7a9a, emissiveIntensity: 0.35,
+      transparent: true, opacity: 0.85, metalness: 0.2, roughness: 0.3,
+    });
+    const pts = [[0.002, 0], [0.05, 0.03], [0.062, 0.09], [0.04, 0.14], [0.012, 0.17], [0.02, 0.2]]
+      .map(([rr, y]) => new THREE.Vector2(rr, y));
+    const scope = new THREE.Mesh(new THREE.LatheGeometry(pts, 10), scopeMat);
+    scope.position.set(20.6, hA, 9.9);
+    staticG.add(scope);
+    updatables.push((dt2, tt) => {
+      scope.rotation.y += dt2 * 2.4;
+      scope.rotation.z = Math.sin(tt * 3.1) * 0.05;
+    });
   }
   candelabra(21, 1.5, 12.5, true); // unlit atop the crates — the room is dark
-  const roomLight = pointLight(24, 3.4, 11, 0x8fa4c8, 4, 12, 0.15);
+  const roomLight = pointLight(24, 3.4, 11, 0x9caed0, 10, 14, 0.15);
   roomLight.on = false;
 
   // the Invisibility Cloak, draped over a stand
@@ -1367,7 +1513,7 @@ export function buildWorld(scene) {
     }
 
     for (const d of doors) d.update(dt);
-    for (const u of updatables) u(dt, t);
+    for (const u of updatables) u(dt, t, playerPos);
     // torch flame jitter (positions) + global size flicker
     const pos = flameGeo.attributes.position.array;
     for (let i = 0; i < flameDefs.length; i++) {

@@ -41,6 +41,11 @@ const SCENARIOS = {
   'dungeon-door-view': [{ tp: [6.2, -1.5, YAW.N, 0] }, { wait: 500 }],
   'dungeon-silhouette': [{ tp: [7, -18, YAW.W, 0] }, { wait: 2600 }],
   'courtyard-look-back': [{ tp: [0, 20, YAW.S, 0.05] }, { wait: 500 }],
+  'room-wide': [{ js: '__game.world.revealRoom()' }, { tp: [24, 9.6, YAW.S, 0.05] }, { cast: 'lumos' }, { wait: 800 }],
+  'room-erised': [{ js: '__game.world.revealRoom()' }, { tp: [22.6, 11.3, YAW.S, 0] }, { wait: 2600 }],
+  'room-cabinet': [{ js: '__game.world.revealRoom()' }, { tp: [26.8, 10.0, Math.PI, 0.5] }, { cast: 'lumos' }, { wait: 800 }],
+  'room-west': [{ js: '__game.world.revealRoom()' }, { tp: [26.2, 10.2, 1.97, 0.05] }, { cast: 'lumos' }, { wait: 800 }],
+  'room-books': [{ js: '__game.world.revealRoom()' }, { tp: [23.2, 10.6, 1.31, -0.15] }, { cast: 'lumos' }, { wait: 800 }],
 };
 
 const names = process.argv.slice(2);
